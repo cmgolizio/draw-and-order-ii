@@ -22,7 +22,7 @@ export default function DrawPage() {
           </p>
           <div
             aria-label="Drawing canvas placeholder"
-            className="flex aspect-[10/13] max-h-130 w-full max-w-md items-center justify-center border border-graphite-200 bg-paper shadow-folder"
+            className="flex aspect-10/13 max-h-130 w-full max-w-md items-center justify-center border border-graphite-200 bg-paper shadow-folder"
           >
             <div className="flex flex-col items-center gap-3 p-6 text-center">
               <Stamp color="ink">Canvas pending</Stamp>

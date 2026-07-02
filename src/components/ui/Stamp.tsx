@@ -33,7 +33,7 @@ export function Stamp({
     <span
       className={cx(
         "type-label inline-block border-3 border-double px-3 py-1 text-sm font-bold",
-        "[mask-image:radial-gradient(140%_120%_at_30%_30%,black_55%,rgb(0_0_0/0.72))]",
+        "mask-[radial-gradient(140%_120%_at_30%_30%,black_55%,rgb(0_0_0/0.72))]",
         COLORS[color],
         className,
       )}
