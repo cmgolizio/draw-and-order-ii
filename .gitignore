@@ -36,6 +36,11 @@ yarn-error.log*
 # vercel
 .vercel
 
+# content pipeline artifacts (local-only)
+/.pipeline-out/
+/.review-cache/
+pipeline-costs.jsonl
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts
