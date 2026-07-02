@@ -1,65 +1,76 @@
-import Image from "next/image";
+import { CaseFolder } from "@/components/ui/CaseFolder";
+import { EvidenceTag } from "@/components/ui/EvidenceTag";
+import { InkButton } from "@/components/ui/InkButton";
+import { Stamp } from "@/components/ui/Stamp";
+import { TypewriterHeading } from "@/components/ui/TypewriterHeading";
 
-export default function Home() {
+const STEPS = [
+  {
+    tag: "Step 1",
+    title: "Read the statement",
+    body: "A witness saw the suspect. Their statement is all you get — no photo, no lineup.",
+  },
+  {
+    tag: "Step 2",
+    title: "Sketch the face",
+    body: "Pencil, eraser, one sheet of paper. Draw the face the statement describes.",
+  },
+  {
+    tag: "Step 3",
+    title: "Face the judge",
+    body: "The forensic AI compares your sketch to the real suspect and files a report.",
+  },
+] as const;
+
+export default function HomePage() {
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+    <div className="mx-auto max-w-5xl px-4 py-10 sm:py-16">
+      <CaseFolder tab="Case File · Open" paperClip>
+        <div className="flex flex-col gap-6">
+          <div className="flex flex-wrap items-center gap-3">
+            <Stamp color="red">Confidential</Stamp>
+            <Stamp color="blue" className="hidden sm:inline-block">
+              Precinct copy
+            </Stamp>
+          </div>
+          <TypewriterHeading as="h1" className="text-4xl sm:text-6xl">
+            Draw &amp; Order
+          </TypewriterHeading>
+          <p className="max-w-prose text-lg text-ink-soft">
+            The witness saw everything. You have their statement, a pencil, and
+            one shot at the sketch. Draw the suspect — the forensic AI decides
+            if it holds up in court.
           </p>
+          <div className="flex flex-wrap gap-3">
+            <InkButton href="/daily" variant="red">
+              Open today&rsquo;s case
+            </InkButton>
+            <InkButton href="/draw" variant="ink">
+              Practice sketching
+            </InkButton>
+          </div>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+      </CaseFolder>
+
+      <section aria-labelledby="how-it-works" className="mt-14">
+        <TypewriterHeading as="h2" className="text-xl">
+          <span id="how-it-works">How a case goes down</span>
+        </TypewriterHeading>
+        <div className="mt-6 grid gap-6 sm:grid-cols-3">
+          {STEPS.map((step) => (
+            <div
+              key={step.tag}
+              className="texture-grain torn-edge-b border border-kraft-400 bg-manila-100 p-5 pb-7 shadow-folder"
+            >
+              <EvidenceTag>{step.tag}</EvidenceTag>
+              <h3 className="type-label mt-4 text-sm font-bold text-ink">
+                {step.title}
+              </h3>
+              <p className="mt-2 text-sm text-ink-soft">{step.body}</p>
+            </div>
+          ))}
         </div>
-      </main>
+      </section>
     </div>
   );
 }

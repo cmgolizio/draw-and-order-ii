@@ -1,26 +1,147 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+/* ---------------------------------------------------------------------------
+ * Draw & Order — case-file / noir design tokens
+ * Palette: manila folder, kraft brown, ink black, stamp red, approval blue,
+ * graphite pencil grays. Paper-white is reserved for the drawing canvas.
+ * ------------------------------------------------------------------------- */
+
+@theme {
+  /* Manila folder family */
+  --color-manila-50: #f8f3e6;
+  --color-manila-100: #f2ead6;
+  --color-manila-200: #e8dcc4;
+  --color-manila-300: #dccba6;
+  --color-manila-400: #ccb586;
+  --color-manila-500: #b89d68;
+
+  /* Case-file kraft brown */
+  --color-kraft-300: #c2a274;
+  --color-kraft-400: #ab8a5b;
+  --color-kraft-500: #957648;
+  --color-kraft-600: #7b5f3a;
+  --color-kraft-700: #5f482c;
+  --color-kraft-800: #453421;
+
+  /* Ink */
+  --color-ink: #1a1814;
+  --color-ink-soft: #403b31;
+  --color-ink-faint: #57503f;
+
+  /* Stamps */
+  --color-stamp-red: #b03a2e;
+  --color-stamp-red-deep: #8c2d24;
+  --color-stamp-blue: #2f5d8a;
+  --color-stamp-blue-deep: #24486c;
+
+  /* Graphite pencil grays */
+  --color-graphite-100: #e6e3dd;
+  --color-graphite-200: #cfccc4;
+  --color-graphite-300: #aaa79e;
+  --color-graphite-400: #85827a;
+  --color-graphite-500: #605d56;
+  --color-graphite-600: #3b3934;
+
+  /* Paper-white: canvas only — a clean sheet clipped to a worn folder */
+  --color-paper: #fbf9f4;
+
+  --shadow-folder:
+    0 1px 2px rgb(26 24 20 / 0.18), 0 8px 20px -8px rgb(26 24 20 / 0.3);
+  --shadow-folder-lg:
+    0 2px 4px rgb(26 24 20 / 0.16), 0 16px 36px -12px rgb(26 24 20 / 0.35);
+  --shadow-pressed: inset 0 2px 4px rgb(26 24 20 / 0.35);
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans:
+    var(--font-grotesk), ui-sans-serif, system-ui, "Helvetica Neue", Arial,
+    sans-serif;
+  --font-typewriter:
+    var(--font-typewriter-src), "Courier New", Courier, monospace;
+  --font-mono:
+    var(--font-mono-src), ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+:root {
+  color-scheme: light;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background-color: var(--color-manila-200);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+}
+
+::selection {
+  background-color: var(--color-stamp-blue);
+  color: var(--color-paper);
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-stamp-blue-deep);
+  outline-offset: 2px;
+}
+
+/* ---------------------------------------------------------------------------
+ * Reusable case-file utilities
+ * ------------------------------------------------------------------------- */
+
+/* Redacted-bar text treatment: ████████ */
+@utility redacted {
+  background-color: var(--color-ink);
+  color: transparent;
+  border-radius: 0.125rem;
+  padding-inline: 0.2em;
+  box-decoration-break: clone;
+  user-select: none;
+
+  &::selection {
+    background-color: var(--color-ink);
+    color: transparent;
+  }
+}
+
+/* Subtle paper grain overlay (inline SVG noise — no network request) */
+@utility texture-grain {
+  position: relative;
+
+  &::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    border-radius: inherit;
+    opacity: 0.05;
+    mix-blend-mode: multiply;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+}
+
+/* Torn paper bottom edge */
+@utility torn-edge-b {
+  clip-path: polygon(0 0,
+      100% 0,
+      100% calc(100% - 7px),
+      96% 100%,
+      91% calc(100% - 6px),
+      85% calc(100% - 1px),
+      78% calc(100% - 7px),
+      71% calc(100% - 2px),
+      64% calc(100% - 8px),
+      56% calc(100% - 3px),
+      49% calc(100% - 7px),
+      42% calc(100% - 1px),
+      35% calc(100% - 6px),
+      27% calc(100% - 2px),
+      20% calc(100% - 8px),
+      13% calc(100% - 3px),
+      6% calc(100% - 7px),
+      0 calc(100% - 2px));
+}
+
+/* Typed-label look: uppercase typewriter with tracking */
+@utility type-label {
+  font-family: var(--font-typewriter);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
 }
