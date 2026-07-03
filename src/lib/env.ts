@@ -41,3 +41,38 @@ export function serverEnv<K extends keyof z.infer<typeof serverEnvSchema>>(
   }
   return parsed.data;
 }
+
+/**
+ * Like serverEnv, but null when unset — for keys where the app has a
+ * documented degraded mode (e.g. Turnstile skipped in keyless local dev).
+ */
+export function serverEnvIfSet<
+  K extends keyof z.infer<typeof serverEnvSchema>,
+>(key: K): string | null {
+  const value = process.env[key];
+  return value ? value : null;
+}
+
+/**
+ * Cloudflare Turnstile site key (public). Optional: local dev without keys
+ * runs with the widget (and server verification) disabled. Static property
+ * access, since NEXT_PUBLIC_* is inlined at build time.
+ */
+export function turnstileSiteKey(): string | null {
+  return process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || null;
+}
+
+/** Judge model override; default is Sonnet-class per the build plan. */
+export function judgeModel(defaultModel: string): string {
+  return process.env.JUDGE_MODEL || defaultModel;
+}
+
+/**
+ * Per-day global judge-call budget (the spend circuit breaker). When the
+ * count is exhausted the app flips to "precinct closed" instead of burning
+ * money.
+ */
+export function judgeDailyBudget(): number {
+  const parsed = Number.parseInt(process.env.JUDGE_DAILY_BUDGET ?? "", 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 300;
+}

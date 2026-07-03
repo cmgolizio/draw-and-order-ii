@@ -1,13 +1,15 @@
 import type { Metadata } from "next";
-import { CaseFolder } from "@/components/ui/CaseFolder";
-import { EvidenceTag } from "@/components/ui/EvidenceTag";
-import { Stamp } from "@/components/ui/Stamp";
-import { TypewriterHeading } from "@/components/ui/TypewriterHeading";
+import { ResultsView } from "@/components/results/ResultsView";
 
 export const metadata: Metadata = {
   title: "Case Report",
 };
 
+/**
+ * The results page (Phase 4 minimal). Submission = reveal, so the draw flow
+ * hands the full result payload over via sessionStorage; Phase 7 rebuilds
+ * this as the durable, server-fetched payoff page with the animated reveal.
+ */
 export default async function ResultsPage({
   params,
 }: {
@@ -17,21 +19,7 @@ export default async function ResultsPage({
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-10 sm:py-16">
-      <CaseFolder tab="Case Report">
-        <div className="flex flex-col gap-5">
-          <Stamp color="blue">Under review</Stamp>
-          <TypewriterHeading as="h1" className="text-3xl sm:text-4xl">
-            Forensic report
-          </TypewriterHeading>
-          <p className="max-w-prose text-ink-soft">
-            The side-by-side reveal, trait breakdown, and the judge&rsquo;s
-            case report land here in Phase 7.
-          </p>
-          <EvidenceTag className="max-w-full">
-            <span className="truncate">Round {roundId}</span>
-          </EvidenceTag>
-        </div>
-      </CaseFolder>
+      <ResultsView roundId={roundId} />
     </div>
   );
 }

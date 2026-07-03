@@ -12,26 +12,13 @@
  * it. It is stored verbatim in suspects.traits.
  */
 
-export type DistinguishingMark = { mark: string; placement: string };
+// Canonical definitions moved to src/lib/game/trait-sheet.ts in Phase 4 (the
+// judge scores against the same sheet); re-exported here so pipeline modules
+// keep their imports.
+import type { DistinguishingMark, TraitSheet } from "@/lib/game/trait-sheet";
 
-export type TraitSheet = {
-  age: string;
-  build: string;
-  faceShape: string;
-  hair: string;
-  facialHair: string;
-  eyebrows: string;
-  eyes: string;
-  nose: string;
-  mouth: string;
-  distinguishingMarks: DistinguishingMark[];
-  expression: string;
-  complexion: string;
-  accessories: string[];
-};
-
-export type Difficulty = "rookie" | "detective" | "cold_case";
-export const DIFFICULTIES: Difficulty[] = ["rookie", "detective", "cold_case"];
+export { DIFFICULTIES, traitSheetLines } from "@/lib/game/trait-sheet";
+export type { Difficulty, DistinguishingMark, TraitSheet } from "@/lib/game/trait-sheet";
 
 type Weighted<T> = { value: T; weight: number };
 
@@ -282,29 +269,4 @@ export function rollTraits(rng: () => number): TraitSheet {
     complexion: pick(rng, COMPLEXIONS),
     accessories: pick(rng, ACCESSORIES),
   };
-}
-
-/** Flat human-readable lines, used in both prompts and the review CLI. */
-export function traitSheetLines(traits: TraitSheet): string[] {
-  return [
-    `Age: ${traits.age}`,
-    `Build: ${traits.build}`,
-    `Face shape: ${traits.faceShape}`,
-    `Hair: ${traits.hair}`,
-    `Facial hair: ${traits.facialHair}`,
-    `Eyebrows: ${traits.eyebrows}`,
-    `Eyes: ${traits.eyes}`,
-    `Nose: ${traits.nose}`,
-    `Mouth: ${traits.mouth}`,
-    `Expression: ${traits.expression}`,
-    `Complexion: ${traits.complexion}`,
-    `Distinguishing marks: ${
-      traits.distinguishingMarks.length
-        ? traits.distinguishingMarks
-            .map((m) => `${m.mark} ${m.placement}`)
-            .join("; ")
-        : "none"
-    }`,
-    `Accessories: ${traits.accessories.length ? traits.accessories.join(", ") : "none"}`,
-  ];
 }

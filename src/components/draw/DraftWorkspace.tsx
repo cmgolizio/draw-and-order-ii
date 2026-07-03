@@ -38,11 +38,46 @@ const SketchCanvas = dynamic(() => import("@/components/draw/SketchCanvas"), {
 
 type Sheet = "tools" | "case" | null;
 
-export function DrawWorkspace({ briefing }: { briefing: DrawBriefing }) {
+export type SubmitArgs = {
+  /** PNG data-URL at exactly 800x1040. */
+  dataUrl: string;
+  /** Serialized stroke log, or null when it blew the 200KB cap. */
+  strokeLog: string | null;
+  /** Sticky guide flag — applies the x0.95 multiplier server-side too. */
+  usedGuide: boolean;
+};
+
+type Props = {
+  briefing: DrawBriefing;
+  busy: "opening" | "submitting" | "forfeiting" | null;
+  submitError: string | null;
+  onSubmit(args: SubmitArgs): void;
+  onForfeit(drawingDataUrl: string | null): void;
+};
+
+export function DrawWorkspace({
+  briefing,
+  busy,
+  submitError,
+  onSubmit,
+  onForfeit,
+}: Props) {
   const [state, dispatch] = useReducer(canvasReducer, initialCanvasState);
   const canvasRef = useRef<SketchCanvasHandle>(null);
   const [openSheet, setOpenSheet] = useState<Sheet>(null);
   const [fabsExpanded, setFabsExpanded] = useState(false);
+
+  // Submit and forfeit both end the round — a second tap confirms.
+  const [confirming, setConfirming] = useState<"submit" | "forfeit" | null>(
+    null,
+  );
+  const confirmTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(
+    () => () => {
+      if (confirmTimer.current) clearTimeout(confirmTimer.current);
+    },
+    [],
+  );
 
   const guideUrl = briefing.silhouetteUrl ?? DEMO_SILHOUETTE_URL;
 
@@ -61,10 +96,7 @@ export function DrawWorkspace({ briefing }: { briefing: DrawBriefing }) {
 
   const handleUndoGesture = useCallback(() => dispatch({ type: "undo" }), []);
 
-  /**
-   * Placeholder for Phase 4's submit: proves the export pipeline (PNG always
-   * 800x1040 + capped stroke log) by downloading the sketch locally.
-   */
+  /** Demo-case fallback: no round to submit to, so download the PNG locally. */
   const handleSave = useCallback(() => {
     const dataUrl = canvasRef.current?.exportPng();
     if (!dataUrl) return;
@@ -72,12 +104,40 @@ export function DrawWorkspace({ briefing }: { briefing: DrawBriefing }) {
     a.href = dataUrl;
     a.download = "sketch-800x1040.png";
     a.click();
+  }, []);
 
-    const log = serializeStrokeLog(state.strokes);
-    if (log === null && state.strokes.length > 0) {
-      console.info("stroke log exceeded 200KB cap — dropped (drawing kept)");
-    }
-  }, [state.strokes]);
+  /** First tap arms the confirm state; the second within 4s acts. */
+  const handleEndRound = useCallback(
+    (kind: "submit" | "forfeit") => {
+      if (confirming !== kind) {
+        setConfirming(kind);
+        if (confirmTimer.current) clearTimeout(confirmTimer.current);
+        confirmTimer.current = setTimeout(() => setConfirming(null), 4000);
+        return;
+      }
+      if (confirmTimer.current) clearTimeout(confirmTimer.current);
+      setConfirming(null);
+
+      if (kind === "submit") {
+        const dataUrl = canvasRef.current?.exportPng();
+        if (!dataUrl) return;
+        const strokeLog = serializeStrokeLog(state.strokes);
+        if (strokeLog === null && state.strokes.length > 0) {
+          console.info("stroke log exceeded 200KB cap — dropped (drawing kept)");
+        }
+        onSubmit({ dataUrl, strokeLog, usedGuide: state.usedGuide });
+      } else {
+        onForfeit(
+          state.strokes.length > 0
+            ? (canvasRef.current?.exportPng() ?? null)
+            : null,
+        );
+      }
+    },
+    [confirming, onSubmit, onForfeit, state.strokes, state.usedGuide],
+  );
+
+  const isDemo = briefing.source === "demo";
 
   return (
     <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
@@ -105,10 +165,47 @@ export function DrawWorkspace({ briefing }: { briefing: DrawBriefing }) {
         />
         <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
           <EvidenceTag>Exhibit A · your sketch</EvidenceTag>
-          <InkButton variant="blue" onClick={handleSave}>
-            Save sketch
-          </InkButton>
+          {isDemo ? (
+            <InkButton variant="blue" onClick={handleSave}>
+              Save sketch
+            </InkButton>
+          ) : (
+            <div className="flex flex-wrap items-center gap-2">
+              <InkButton
+                variant="ink"
+                onClick={() => handleEndRound("forfeit")}
+                disabled={busy !== null}
+                aria-live="polite"
+              >
+                {busy === "forfeiting"
+                  ? "Closing case…"
+                  : confirming === "forfeit"
+                    ? "Give up?"
+                    : "Turn yourself in"}
+              </InkButton>
+              <InkButton
+                variant="red"
+                onClick={() => handleEndRound("submit")}
+                disabled={busy !== null}
+                aria-live="polite"
+              >
+                {busy === "submitting"
+                  ? "Filing sketch…"
+                  : confirming === "submit"
+                    ? "File it?"
+                    : "Submit sketch"}
+              </InkButton>
+            </div>
+          )}
         </div>
+        {submitError && (
+          <p
+            role="alert"
+            className="mt-2 border border-stamp-red-deep/40 bg-paper p-3 text-sm text-stamp-red-deep"
+          >
+            {submitError}
+          </p>
+        )}
       </div>
 
       {/* Desktop case file */}

@@ -9,6 +9,8 @@
     "lint": "eslint",
     "seed": "tsx scripts/seed.ts",
     "test:rls": "tsx scripts/test-rls.ts",
+    "test:game-api": "tsx scripts/test-game-api.ts",
+    "calibrate-judge": "tsx scripts/calibrate-judge.ts",
     "generate-suspects": "tsx scripts/generate-suspects.ts",
     "review-suspects": "tsx scripts/review-suspects.ts",
     "assign-daily": "tsx scripts/assign-daily.ts"

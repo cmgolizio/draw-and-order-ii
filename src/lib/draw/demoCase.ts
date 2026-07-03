@@ -5,7 +5,9 @@
 
 export type DrawBriefing = {
   source: "live" | "demo";
-  suspectId: string | null;
+  /** The open round this sketch belongs to (Phase 4); null for the demo. */
+  roundId: string | null;
+  mode: "practice" | "daily";
   difficulty: "rookie" | "detective" | "cold_case";
   statement: string;
   statementTeaser: string;
@@ -15,7 +17,8 @@ export type DrawBriefing = {
 
 export const DEMO_BRIEFING: Omit<DrawBriefing, "silhouetteUrl"> = {
   source: "demo",
-  suspectId: null,
+  roundId: null,
+  mode: "practice",
   difficulty: "detective",
   statement:
     "It was over fast, but I'd know him again. Maybe mid-40s? Long face. He had a mustache — or heavy stubble, hard to say under the streetlight. Hair swept back, going gray at the sides I think. Deep-set eyes. Honestly the thing I remember is the crooked nose, bent once to the left like an old break.",
