@@ -7,7 +7,13 @@
  * pressure to 0-99, per-point time as ms deltas — compact and still
  * perfectly replayable.
  */
-import { CANVAS_HEIGHT, CANVAS_WIDTH, type Stroke } from "./types";
+import {
+  CANVAS_HEIGHT,
+  CANVAS_WIDTH,
+  PENCIL_GRADES,
+  type PencilGrade,
+  type Stroke,
+} from "./types";
 
 export const STROKE_LOG_VERSION = 1;
 export const STROKE_LOG_MAX_BYTES = 200_000;
@@ -67,4 +73,64 @@ export function serializeStrokeLog(strokes: Stroke[]): string | null {
   const json = JSON.stringify(log);
   if (json.length > STROKE_LOG_MAX_BYTES) return null;
   return json;
+}
+
+/* ---------------------------------------------------------------------------
+ * The read side (Phase 7 replay): rounds.stroke_data arrives as untrusted
+ * jsonb, so it is structurally validated before the results page animates it.
+ * ------------------------------------------------------------------------- */
+
+function isPoint(value: unknown): value is [number, number, number, number] {
+  return (
+    Array.isArray(value) &&
+    value.length === 4 &&
+    value.every((n) => typeof n === "number" && Number.isFinite(n))
+  );
+}
+
+function isCompressedStroke(value: unknown): value is CompressedStroke {
+  if (typeof value !== "object" || value === null) return false;
+  const s = value as Record<string, unknown>;
+  return (
+    (s.t === 0 || s.t === 1) &&
+    typeof s.g === "string" &&
+    (PENCIL_GRADES as readonly string[]).includes(s.g) &&
+    typeof s.s === "number" &&
+    Number.isFinite(s.s) &&
+    (s.sim === 0 || s.sim === 1) &&
+    typeof s.at === "number" &&
+    Array.isArray(s.p) &&
+    s.p.every(isPoint)
+  );
+}
+
+/** Validate a stored stroke log; null when malformed or from a future version. */
+export function parseStrokeLog(value: unknown): StrokeLog | null {
+  if (typeof value !== "object" || value === null) return null;
+  const log = value as Record<string, unknown>;
+  if (log.v !== STROKE_LOG_VERSION) return null;
+  if (log.w !== CANVAS_WIDTH || log.h !== CANVAS_HEIGHT) return null;
+  if (!Array.isArray(log.strokes) || !log.strokes.every(isCompressedStroke)) {
+    return null;
+  }
+  return { v: STROKE_LOG_VERSION, w: CANVAS_WIDTH, h: CANVAS_HEIGHT, strokes: log.strokes };
+}
+
+/** Inverse of compressStroke: back to renderable strokes for the replay. */
+export function decompressStrokeLog(log: StrokeLog): Stroke[] {
+  return log.strokes.map((s, index) => {
+    let t = 0;
+    return {
+      id: index + 1,
+      tool: s.t === 1 ? "eraser" : "pencil",
+      grade: s.g as PencilGrade,
+      size: s.s,
+      simulatePressure: s.sim === 1,
+      startedAt: s.at,
+      points: s.p.map(([x, y, pressure, dt]) => {
+        t += dt;
+        return [x / 10, y / 10, pressure / 100, t];
+      }),
+    };
+  });
 }

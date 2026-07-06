@@ -23,6 +23,10 @@ export const LIMITS = {
     windowSeconds: 86400,
     max: 60,
   },
+  /** Phase 5 identity plumbing: cheap writes, but no reason to allow spam. */
+  migratePerIp: { bucket: "migrate-ip", windowSeconds: 3600, max: 10 },
+  migratePerIdentity: { bucket: "migrate-id", windowSeconds: 3600, max: 10 },
+  profilePerIdentity: { bucket: "profile-id", windowSeconds: 3600, max: 20 },
 } as const satisfies Record<string, Limit>;
 
 /**

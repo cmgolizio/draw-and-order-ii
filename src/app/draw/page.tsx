@@ -1,14 +1,14 @@
 import type { Metadata } from "next";
 import { CaseFolder } from "@/components/ui/CaseFolder";
 import { TypewriterHeading } from "@/components/ui/TypewriterHeading";
-import { PracticeGame } from "@/components/draw/PracticeGame";
+import { RoundGame } from "@/components/draw/RoundGame";
 
 export const metadata: Metadata = {
   title: "Practice",
 };
 
 /**
- * Practice sketching (Phase 4): the round lifecycle lives in PracticeGame —
+ * Practice sketching (Phase 4): the round lifecycle lives in RoundGame —
  * rounds are opened through POST /api/rounds (Turnstile-gated, rate-limited)
  * and the suspect image never reaches this page before reveal.
  */
@@ -26,7 +26,7 @@ export default function DrawPage() {
               only, detective — this precinct doesn&apos;t do color.
             </p>
           </div>
-          <PracticeGame />
+          <RoundGame mode="practice" />
         </div>
       </CaseFolder>
     </div>

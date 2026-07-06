@@ -8,8 +8,10 @@ export function apiError(
   status: number,
   code: string,
   message: string,
+  /** Optional extra fields (e.g. the finished roundId on a daily conflict). */
+  extra?: Record<string, unknown>,
 ): Response {
-  return Response.json({ code, error: message }, { status });
+  return Response.json({ code, error: message, ...extra }, { status });
 }
 
 /** Today's date (UTC) as YYYY-MM-DD — dailies flip at a fixed UTC hour. */

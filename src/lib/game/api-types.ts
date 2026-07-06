@@ -45,20 +45,9 @@ export type RevealRoundResponse = {
   suspectImageUrl: string | null;
 };
 
-export type ApiErrorBody = { code: string; error: string };
-
-/** What the draw flow stashes in sessionStorage for /results/[roundId]. */
-export type RoundResultPayload = {
-  roundId: string;
-  mode: RoundMode;
-  difficulty: Difficulty;
-  statement: string;
-  forfeited: boolean;
-  score: number | null;
-  breakdown: ScoreBreakdownPayload | null;
-  suspectImageUrl: string | null;
-  drawingDataUrl: string | null;
-  durationSeconds: number | null;
+export type ApiErrorBody = {
+  code: string;
+  error: string;
+  /** `daily_already_played` includes the finished round for a report link. */
+  roundId?: string;
 };
-
-export const RESULT_STORAGE_PREFIX = "dao:result:";

@@ -173,6 +173,7 @@ async function createRound(request: NextRequest) {
           409,
           "daily_already_played",
           "You've already filed a sketch on today's case, detective. Come back tomorrow.",
+          existing ? { roundId: existing.id } : undefined,
         );
       }
     } else {

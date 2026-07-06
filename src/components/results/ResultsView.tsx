@@ -12,6 +12,8 @@ import {
   type RoundResultPayload,
 } from "@/lib/game/api-types";
 import { TRAIT_KEYS, TRAIT_WEIGHTS, type TraitKey } from "@/lib/game/scoring";
+import { ShareBlock } from "@/components/results/ShareBlock";
+import { SignupNudge } from "@/components/results/SignupNudge";
 import { CaseFolder } from "@/components/ui/CaseFolder";
 import { EvidenceTag } from "@/components/ui/EvidenceTag";
 import { InkButton } from "@/components/ui/InkButton";
@@ -212,6 +214,10 @@ export function ResultsView({ roundId }: { roundId: string }) {
             time.
           </p>
         )}
+
+        <ShareBlock payload={payload} />
+
+        <SignupNudge score={payload.score} />
 
         <div className="flex flex-wrap items-center gap-3 border-t border-graphite-200 pt-4">
           <InkButton variant="red" href="/draw">

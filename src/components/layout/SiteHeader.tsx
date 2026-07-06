@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { HeaderAuthLink } from "@/components/auth/HeaderAuthLink";
 
 const NAV = [
   { href: "/draw", label: "Practice" },
@@ -36,12 +37,7 @@ export function SiteHeader() {
               {label}
             </Link>
           ))}
-          <Link
-            href="/login"
-            className="type-label ml-1 rounded-sm border border-manila-300/70 px-2.5 py-1.5 hover:bg-manila-100/15 hover:text-manila-50"
-          >
-            Sign in
-          </Link>
+          <HeaderAuthLink className="type-label ml-1 rounded-sm border border-manila-300/70 px-2.5 py-1.5 hover:bg-manila-100/15 hover:text-manila-50" />
         </nav>
       </div>
     </header>

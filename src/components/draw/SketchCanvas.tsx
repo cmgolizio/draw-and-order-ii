@@ -26,6 +26,7 @@ import {
 import type Konva from "konva";
 import { Layer, Path, Rect, Stage } from "react-konva";
 import { strokeToPathData } from "@/lib/draw/strokes";
+import { startPencilScratch, type ScratchHandle } from "@/lib/sound";
 import {
   CANVAS_HEIGHT,
   CANVAS_WIDTH,
@@ -122,6 +123,16 @@ export const SketchCanvas = forwardRef<SketchCanvasHandle, Props>(
     const rafId = useRef(0);
     const [, forceRepaint] = useState(0);
 
+    // Optional pencil-scratch audio (Phase 7) — null whenever sound is off.
+    const scratch = useRef<ScratchHandle | null>(null);
+    useEffect(
+      () => () => {
+        scratch.current?.stop();
+        scratch.current = null;
+      },
+      [],
+    );
+
     const scheduleRepaint = useCallback(() => {
       if (rafId.current) return;
       rafId.current = requestAnimationFrame(() => {
@@ -155,6 +166,8 @@ export const SketchCanvas = forwardRef<SketchCanvasHandle, Props>(
     const cancelCurrentStroke = useCallback(() => {
       currentStroke.current = null;
       drawingPointerId.current = null;
+      scratch.current?.stop();
+      scratch.current = null;
       scheduleRepaint();
     }, [scheduleRepaint]);
 
@@ -202,6 +215,7 @@ export const SketchCanvas = forwardRef<SketchCanvasHandle, Props>(
           startedAt: strokeStartedAt.current - sessionStart.current,
           points: [toLogical(e)],
         };
+        if (tool === "pencil") scratch.current = startPencilScratch();
         scheduleRepaint();
       },
       [
@@ -251,6 +265,16 @@ export const SketchCanvas = forwardRef<SketchCanvasHandle, Props>(
             performance.now() - strokeStartedAt.current,
           ]);
         }
+        if (scratch.current) {
+          // Speed over the last two points (logical px/ms) drives loudness.
+          const pts = currentStroke.current.points;
+          if (pts.length >= 2) {
+            const [x1, y1, , t1] = pts[pts.length - 1];
+            const [x0, y0, , t0] = pts[pts.length - 2];
+            const dt = Math.max(1, t1 - t0);
+            scratch.current.move(Math.hypot(x1 - x0, y1 - y0) / dt);
+          }
+        }
         scheduleRepaint();
       },
       [scheduleRepaint],
@@ -278,6 +302,8 @@ export const SketchCanvas = forwardRef<SketchCanvasHandle, Props>(
         const stroke = currentStroke.current;
         currentStroke.current = null;
         drawingPointerId.current = null;
+        scratch.current?.stop();
+        scratch.current = null;
         if (!cancelled && stroke && stroke.points.length > 0) {
           onCommitStroke(stroke);
         }

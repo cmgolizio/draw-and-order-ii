@@ -6,6 +6,7 @@
  * guide toggle. Fully keyboard operable.
  */
 import { useEffect, useRef, useState } from "react";
+import { SoundToggle } from "@/components/ui/SoundToggle";
 import { cx } from "@/lib/cx";
 import type { CanvasAction, CanvasState } from "@/lib/draw/reducer";
 import {
@@ -226,6 +227,12 @@ export function Toolbar({ state, dispatch, hasGuide, layout }: Props) {
           )}
         </section>
       )}
+
+      {/* Optional pencil-scratch audio — muted by default */}
+      <section aria-label="Sound">
+        <p className="type-label mb-1.5 text-[10px] text-ink-faint">Sound</p>
+        <SoundToggle />
+      </section>
     </div>
   );
 }
