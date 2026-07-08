@@ -35,7 +35,7 @@ type LeaderboardRow = {
   final_score: number | string;
 };
 
-export const GET = withRouteErrors(leaderboard);
+export const GET = withRouteErrors("daily.leaderboard", leaderboard);
 
 async function leaderboard(request: NextRequest) {
   const params = request.nextUrl.searchParams;

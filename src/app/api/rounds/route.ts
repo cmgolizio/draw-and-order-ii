@@ -2,6 +2,7 @@ import type { NextRequest } from "next/server";
 import { z } from "zod";
 import type { CreateRoundResponse } from "@/lib/game/api-types";
 import { apiError, utcToday, withRouteErrors } from "@/lib/server/api";
+import { logEvent } from "@/lib/server/log";
 import {
   ensureProfile,
   identityRateKey,
@@ -38,7 +39,7 @@ type SuspectBrief = {
   silhouette_path: string | null;
 };
 
-export const POST = withRouteErrors(createRound);
+export const POST = withRouteErrors("rounds.create", createRound);
 
 async function createRound(request: NextRequest) {
   let json: unknown;
@@ -191,6 +192,13 @@ async function createRound(request: NextRequest) {
       .createSignedUrl(suspect.silhouette_path, 60 * 60);
     silhouetteUrl = signed?.signedUrl ?? null;
   }
+
+  logEvent("round_created", {
+    roundId,
+    mode,
+    difficulty: suspect.difficulty,
+    identity: identity.kind,
+  });
 
   const response: CreateRoundResponse = {
     roundId,

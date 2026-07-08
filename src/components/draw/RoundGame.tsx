@@ -11,6 +11,7 @@
  */
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import { track } from "@vercel/analytics";
 import { cx } from "@/lib/cx";
 import type {
   ApiErrorBody,
@@ -111,10 +112,12 @@ export function RoundGame({ mode }: { mode: "practice" | "daily" }) {
         return;
       }
       const data = (await res.json()) as CreateRoundResponse;
+      track("round_started", { mode, difficulty: data.difficulty });
       setBriefing({
         source: "live",
         roundId: data.roundId,
         mode: data.mode,
+        dailyDate: data.dailyDate,
         difficulty: data.difficulty,
         statement: data.statement,
         statementTeaser: data.statementTeaser,
@@ -162,6 +165,11 @@ export function RoundGame({ mode }: { mode: "practice" | "daily" }) {
         return;
       }
       const data = (await res.json()) as SubmitRoundResponse;
+      track("round_submitted", {
+        mode,
+        difficulty: briefing.difficulty,
+        score: Math.round(data.score),
+      });
       router.push(`/results/${data.roundId}`);
     } catch {
       setError(

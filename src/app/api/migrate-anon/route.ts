@@ -2,6 +2,7 @@ import type { NextRequest } from "next/server";
 import { z } from "zod";
 import type { MigrateAnonResponse } from "@/lib/game/api-types";
 import { apiError, withRouteErrors } from "@/lib/server/api";
+import { logError, logEvent, logWarn } from "@/lib/server/log";
 import { ensureProfile, requestIp } from "@/lib/server/identity";
 import { hitLimit, LIMITS } from "@/lib/server/rate-limit";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -25,7 +26,7 @@ type ClaimSummary = {
   dropped_drawings: string[];
 };
 
-export const POST = withRouteErrors(migrateAnon);
+export const POST = withRouteErrors("migrate-anon", migrateAnon);
 
 async function migrateAnon(request: NextRequest) {
   let json: unknown;
@@ -92,7 +93,7 @@ async function migrateAnon(request: NextRequest) {
         "That badge number was already claimed by another detective.",
       );
     }
-    console.error("[migrate-anon] claim failed", {
+    logError("migrate_claim_failed", {
       userId: auth.user.id,
       error: error.message,
     });
@@ -118,14 +119,14 @@ async function migrateAnon(request: NextRequest) {
       .from("drawings")
       .remove(summary.dropped_drawings);
     if (removeError) {
-      console.warn("[migrate-anon] orphaned drawings not removed", {
+      logWarn("migrate_orphan_sweep_failed", {
         paths: summary.dropped_drawings,
         error: removeError.message,
       });
     }
   }
 
-  console.log("[migrate-anon] claimed", {
+  logEvent("anon_claimed", {
     userId: auth.user.id,
     status: summary.status,
     rounds: summary.claimed,

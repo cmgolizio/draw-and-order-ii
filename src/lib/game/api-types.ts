@@ -51,3 +51,24 @@ export type ApiErrorBody = {
   /** `daily_already_played` includes the finished round for a report link. */
   roundId?: string;
 };
+
+/** POST /api/migrate-anon — the one-time anonymous-history claim (Phase 5). */
+export type MigrateAnonResponse = {
+  status: "claimed" | "already_claimed";
+  claimedRounds: number;
+};
+
+/** One row of the daily board (Phase 6): handles only — no avatars, no links. */
+export type LeaderboardEntry = {
+  rank: number;
+  handle: string;
+  score: number;
+};
+
+/** GET /api/daily/leaderboard — top N page plus the viewer's own rank. */
+export type DailyLeaderboardResponse = {
+  date: string;
+  entries: LeaderboardEntry[];
+  viewer: { rank: number; score: number } | null;
+  hasMore: boolean;
+};

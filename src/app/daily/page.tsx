@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { DailyLeaderboard } from "@/components/daily/DailyLeaderboard";
 import { RoundGame } from "@/components/draw/RoundGame";
 import { CaseFolder } from "@/components/ui/CaseFolder";
 import { Stamp } from "@/components/ui/Stamp";
@@ -42,6 +43,12 @@ export default function DailyPage() {
           <RoundGame mode="daily" />
         </div>
       </CaseFolder>
+
+      <div className="mt-8">
+        <CaseFolder tab="Daily Board" bodyClassName="p-4 sm:p-6">
+          <DailyLeaderboard />
+        </CaseFolder>
+      </div>
     </div>
   );
 }

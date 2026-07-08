@@ -1,4 +1,5 @@
 import "server-only";
+import { errorString, logError, logEvent } from "@/lib/server/log";
 
 /**
  * Uniform error body for the game API: { code, error } with an in-theme,
@@ -20,21 +21,33 @@ export function utcToday(): string {
 }
 
 /**
- * Last-resort catch for game routes: anything unhandled (missing env, a
- * Supabase outage) becomes an honest JSON 500 instead of a bare crash —
- * never a fake success.
+ * Wraps a game route with the Phase 8 observability contract: every request
+ * emits one structured `api_request` log (route, method, status, duration),
+ * and anything unhandled (missing env, a Supabase outage) becomes an honest
+ * JSON 500 instead of a bare crash — never a fake success.
  */
-export function withRouteErrors<Args extends unknown[]>(
-  handler: (...args: Args) => Promise<Response>,
-): (...args: Args) => Promise<Response> {
-  return async (...args) => {
+export function withRouteErrors<Req extends Request, Args extends unknown[]>(
+  route: string,
+  handler: (request: Req, ...rest: Args) => Promise<Response>,
+): (request: Req, ...rest: Args) => Promise<Response> {
+  return async (request, ...rest) => {
+    const started = Date.now();
     try {
-      return await handler(...args);
+      const response = await handler(request, ...rest);
+      logEvent("api_request", {
+        route,
+        method: request.method,
+        status: response.status,
+        ms: Date.now() - started,
+      });
+      return response;
     } catch (error) {
-      console.error(
-        "[api] unhandled route error:",
-        error instanceof Error ? error.message : error,
-      );
+      logError("api_error", {
+        route,
+        method: request.method,
+        ms: Date.now() - started,
+        error: errorString(error),
+      });
       return apiError(
         500,
         "server_error",

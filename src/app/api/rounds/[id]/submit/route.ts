@@ -12,9 +12,11 @@ import {
   runJudge,
   type JudgeResult,
 } from "@/lib/game/judge";
+import { estimateJudgeCostUsd } from "@/lib/game/judge-cost";
 import { computeFinalScore, SCORING_VERSION } from "@/lib/game/scoring";
 import { TraitSheetSchema } from "@/lib/game/trait-sheet";
 import { apiError, withRouteErrors } from "@/lib/server/api";
+import { errorString, logError, logEvent } from "@/lib/server/log";
 import {
   identityRateKey,
   ownsRound,
@@ -47,7 +49,7 @@ const FieldsSchema = z.object({
   usedGuide: z.enum(["true", "false"]).optional(),
 });
 
-export const POST = withRouteErrors(submitRound);
+export const POST = withRouteErrors("rounds.submit", submitRound);
 
 async function submitRound(
   request: NextRequest,
@@ -226,22 +228,21 @@ async function submitRound(
       drawingPng: drawingBytes,
     });
   } catch (error) {
-    console.error("[judge] call failed", {
-      roundId,
-      model,
-      error: error instanceof Error ? error.message : String(error),
-    });
+    logError("judge_failed", { roundId, model, error: errorString(error) });
     return apiError(
       502,
       "judge_unavailable",
       "The forensic examiner stepped out — your sketch is filed. Try scoring it again in a moment.",
     );
   }
-  console.log("[judge] scored", {
+  // Per-call cost logging (Phase 8): spend per round, greppable by event.
+  const judgeCostUsd = estimateJudgeCostUsd(model, judged.usage);
+  logEvent("judge_scored", {
     roundId,
     model,
     input_tokens: judged.usage.input_tokens,
     output_tokens: judged.usage.output_tokens,
+    estimated_cost_usd: judgeCostUsd,
   });
 
   // --- final score is computed HERE, from tunable weights -------------------
@@ -279,6 +280,7 @@ async function submitRound(
           prompt_version: JUDGE_PROMPT_VERSION,
           input_tokens: judged.usage.input_tokens,
           output_tokens: judged.usage.output_tokens,
+          estimated_cost_usd: judgeCostUsd,
         },
       },
       duration_seconds: durationSeconds,
@@ -288,6 +290,14 @@ async function submitRound(
   if (scoreError) {
     return apiError(500, "server_error", "Couldn't file the report. Try again.");
   }
+  logEvent("round_scored", {
+    roundId,
+    mode: round.mode,
+    difficulty: suspect.difficulty,
+    score: computed.finalScore,
+    usedGuide,
+    durationSeconds,
+  });
 
   // --- submission = reveal: sign the suspect image, short-lived -------------
   const { data: signed } = await admin.storage

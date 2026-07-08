@@ -15,7 +15,7 @@ import { createClient } from "@/lib/supabase/server";
 
 const BodySchema = z.object({ handle: z.string().min(1).max(64) });
 
-export const POST = withRouteErrors(updateProfile);
+export const POST = withRouteErrors("profile.update", updateProfile);
 
 async function updateProfile(request: NextRequest) {
   let json: unknown;

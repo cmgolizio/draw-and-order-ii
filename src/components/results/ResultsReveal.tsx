@@ -11,6 +11,7 @@
  */
 import { useState } from "react";
 import { track } from "@vercel/analytics";
+import { SignupNudge } from "@/components/results/SignupNudge";
 import { StrokeReplay } from "@/components/results/StrokeReplay";
 import { EvidenceTag } from "@/components/ui/EvidenceTag";
 import { InkButton } from "@/components/ui/InkButton";
@@ -245,6 +246,9 @@ export function ResultsReveal({ result }: { result: RoundResult }) {
           “{result.statement}”
         </blockquote>
       </details>
+
+      {/* Post-score signup nudge (Phase 5): anonymous + decent result only */}
+      <SignupNudge score={result.forfeited ? null : result.score} />
 
       {/* Actions */}
       <div className="flex flex-wrap items-center gap-3 border-t border-graphite-200 pt-4">

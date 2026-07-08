@@ -179,6 +179,7 @@ export function Toolbar({ state, dispatch, hasGuide, layout }: Props) {
             disabled={state.strokes.length === 0}
             className={toolButtonCls()}
             title="Undo (Ctrl/Cmd+Z, two-finger tap)"
+            aria-keyshortcuts="Control+Z Meta+Z"
           >
             Undo
           </button>
@@ -188,6 +189,7 @@ export function Toolbar({ state, dispatch, hasGuide, layout }: Props) {
             disabled={state.redoStack.length === 0}
             className={toolButtonCls()}
             title="Redo (Shift+Ctrl/Cmd+Z)"
+            aria-keyshortcuts="Control+Shift+Z Meta+Shift+Z"
           >
             Redo
           </button>

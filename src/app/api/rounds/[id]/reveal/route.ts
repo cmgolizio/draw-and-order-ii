@@ -28,7 +28,7 @@ const REVEALS_PER_HOUR = {
 
 const BodySchema = z.object({ anonId: z.uuid().optional() });
 
-export const POST = withRouteErrors(revealRound);
+export const POST = withRouteErrors("rounds.reveal", revealRound);
 
 async function revealRound(
   request: NextRequest,
