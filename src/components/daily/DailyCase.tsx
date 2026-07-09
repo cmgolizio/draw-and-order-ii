@@ -8,7 +8,7 @@
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 import { peekAnonId } from "@/lib/game/anon-id";
-import type { DailyInfoResponse } from "@/lib/game/api-types";
+import type { DailyLeaderboardResponse } from "@/lib/game/api-types";
 import { caseNumber, utcDateString } from "@/lib/game/daily";
 import {
   errorMessage,
@@ -26,7 +26,7 @@ import { Stamp } from "@/components/ui/Stamp";
 import { TypewriterHeading } from "@/components/ui/TypewriterHeading";
 
 export function DailyCase() {
-  const [info, setInfo] = useState<DailyInfoResponse | null>(null);
+  const [info, setInfo] = useState<DailyLeaderboardResponse | null>(null);
   const [infoError, setInfoError] = useState(false);
   const [briefing, setBriefing] = useState<DrawBriefing | null>(null);
   const turnstileToken = useRef<string | null>(null);
@@ -41,7 +41,7 @@ export function DailyCase() {
     fetch(`/api/daily${query}`)
       .then(async (res) => {
         if (!res.ok) throw new Error(`daily info ${res.status}`);
-        const data = (await res.json()) as DailyInfoResponse;
+        const data = (await res.json()) as DailyLeaderboardResponse;
         setInfo(data);
         setInfoError(false);
       })
