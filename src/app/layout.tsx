@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono, Special_Elite } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
 import { IdentityBoot } from "@/components/auth/IdentityBoot";
-import { ConsentNotice } from "@/components/layout/ConsentNotice";
+import { ConsentNotice } from "@/components/auth/ConsentNotice";
 import { SiteHeader } from "@/components/layout/SiteHeader";
 import { SiteFooter } from "@/components/layout/SiteFooter";
 import { siteUrl } from "@/lib/site-url";

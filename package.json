@@ -7,6 +7,10 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:e2e": "playwright test",
+    "launch-audit": "tsx scripts/launch-audit.ts",
     "seed": "tsx scripts/seed.ts",
     "test:rls": "tsx scripts/test-rls.ts",
     "test:game-api": "tsx scripts/test-game-api.ts",
@@ -32,6 +36,7 @@
   },
   "devDependencies": {
     "@fal-ai/client": "^1.10.1",
+    "@playwright/test": "^1.61.1",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",
@@ -41,6 +46,7 @@
     "eslint-config-next": "16.2.10",
     "tailwindcss": "^4",
     "tsx": "^4.22.5",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^4.1.10"
   }
 }

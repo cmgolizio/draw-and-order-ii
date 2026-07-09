@@ -1,4 +1,4 @@
-import { ConsentNoticeLink } from "@/components/layout/ConsentNotice";
+import { ConsentNoticeLink } from "@/components/auth/ConsentNotice";
 
 export function SiteFooter() {
   return (
