@@ -52,7 +52,8 @@ type Props = {
   busy: "opening" | "submitting" | "forfeiting" | null;
   submitError: string | null;
   onSubmit(args: SubmitArgs): void;
-  onForfeit(): void;
+  // onForfeit(): void;
+  onForfeit: (drawingDataUrl: string | null) => Promise<void>;
 };
 
 export function DrawWorkspace({
@@ -127,7 +128,8 @@ export function DrawWorkspace({
         }
         onSubmit({ dataUrl, strokeLog, usedGuide: state.usedGuide });
       } else {
-        onForfeit();
+        // onForfeit();
+        onForfeit(canvasRef.current?.exportPng() ?? null);
       }
     },
     [confirming, onSubmit, onForfeit, state.strokes, state.usedGuide],
