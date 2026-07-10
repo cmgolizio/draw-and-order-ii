@@ -18,14 +18,13 @@ import { InkButton } from "@/components/ui/InkButton";
 import { SoundToggle } from "@/components/ui/SoundToggle";
 import { Stamp } from "@/components/ui/Stamp";
 import { TypewriterHeading } from "@/components/ui/TypewriterHeading";
-// import {
-//   buildShareText,
-//   caseNumber,
-//   formatScore,
-//   TRAIT_LABELS,
-//   type RoundResult,
-// } from "@/lib/game/round-result";
-import { buildShareText, caseNumber, formatScore, TRAIT_LABELS, type RoundResult } from "@/lib/game/round-result";
+import {
+  buildShareText,
+  caseNumber,
+  formatScore,
+  TRAIT_LABELS,
+  type RoundResult,
+} from "@/lib/game/round-result";
 import { TRAIT_KEYS, TRAIT_WEIGHTS } from "@/lib/game/scoring";
 import { playStampThud } from "@/lib/sound";
 

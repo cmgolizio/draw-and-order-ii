@@ -48,6 +48,13 @@ export default defineConfig({
         SUPABASE_SECRET_KEY: "mock-secret-key",
         ANTHROPIC_API_KEY: "mock-anthropic-key",
         ANTHROPIC_BASE_URL: `${MOCK_ORIGIN}/anthropic`,
+        // Force keyless Turnstile for the smoke run. A real TURNSTILE_SECRET_KEY
+        // in the developer's .env.local would otherwise leak into this build and
+        // make /api/rounds reject the (token-less) test requests with a 403
+        // "Human check missing". Process env beats .env.local in Next, and the
+        // empty values trip the app's documented keyless/skip path.
+        TURNSTILE_SECRET_KEY: "",
+        NEXT_PUBLIC_TURNSTILE_SITE_KEY: "",
       },
     },
   ],
