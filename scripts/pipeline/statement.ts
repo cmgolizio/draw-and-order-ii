@@ -15,7 +15,7 @@ import { traitSheetLines } from "./traits";
 import type { CostTracker } from "./costs";
 
 /** Bump when the prompt changes; stored in model_info per acceptance. */
-export const STATEMENT_PROMPT_VERSION = "1.0.0";
+export const STATEMENT_PROMPT_VERSION = "1.0.1";
 
 const StatementSchema = z.object({
   statement: z
@@ -36,7 +36,7 @@ const DIFFICULTY_BRIEF: Record<Difficulty, string> = {
   detective: `Target detail level: DETECTIVE.
 - Cover only 5-6 features from the sheet; omit the rest entirely.
 - Some hedging on one or two of them ("maybe mid-40s", "I think it was graying").
-- The witness saw him briefly under decent light. Include at least one distinguishing mark if the sheet has any.`,
+- The witness saw the suspect briefly under decent light. Include at least one distinguishing mark if the sheet has any.`,
   cold_case: `Target detail level: COLD CASE.
 - Cover only 3-4 features from the sheet, in vague terms; omit everything else.
 - Heavy hedging ("it was dark", "it happened fast").

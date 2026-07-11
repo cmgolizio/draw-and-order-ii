@@ -33,12 +33,25 @@ const AGES: Weighted<string>[] = [
   { value: "60s", weight: 1 },
 ];
 
-const BUILDS: Weighted<string>[] = [
+/** v2 (polish plan Phase 1): sex is rolled first and gates the tables below.
+ *  Roughly 50/50; tune here. */
+export const FEMALE_SHARE = 0.5;
+
+const BUILDS_MALE: Weighted<string>[] = [
   { value: "slight", weight: 2 },
   { value: "lean", weight: 3 },
   { value: "average", weight: 4 },
   { value: "stocky", weight: 3 },
   { value: "broad-shouldered", weight: 2 },
+  { value: "heavyset", weight: 2 },
+];
+
+const BUILDS_FEMALE: Weighted<string>[] = [
+  { value: "slight", weight: 2 },
+  { value: "petite", weight: 2 },
+  { value: "lean", weight: 3 },
+  { value: "average", weight: 4 },
+  { value: "athletic", weight: 2 },
   { value: "heavyset", weight: 2 },
 ];
 
@@ -63,7 +76,7 @@ const HAIR_COLORS: Weighted<string>[] = [
   { value: "white", weight: 1 },
 ];
 
-const HAIR_STYLES: Weighted<string>[] = [
+const HAIR_STYLES_MALE: Weighted<string>[] = [
   { value: "buzz cut", weight: 3 },
   { value: "short and messy", weight: 3 },
   { value: "swept back", weight: 2 },
@@ -75,12 +88,28 @@ const HAIR_STYLES: Weighted<string>[] = [
   { value: "tight cropped curls", weight: 2 },
 ];
 
+const HAIR_STYLES_FEMALE: Weighted<string>[] = [
+  { value: "chin-length bob", weight: 3 },
+  { value: "shoulder-length, straight", weight: 3 },
+  { value: "long, past the shoulders", weight: 2 },
+  { value: "pulled back in a tight ponytail", weight: 2 },
+  { value: "pulled up in a loose bun", weight: 2 },
+  { value: "pixie cut", weight: 2 },
+  { value: "long loose curls", weight: 2 },
+  { value: "tight cropped curls", weight: 2 },
+  { value: "short and messy", weight: 1 },
+  { value: "cropped close to the scalp", weight: 1 },
+];
+
+/** Male-only: baldness barely rolls for women, so it stays gated. */
 const BALD_OPTIONS: Weighted<string>[] = [
   { value: "completely bald", weight: 2 },
   { value: "shaved head", weight: 2 },
   { value: "bald on top, short at the sides", weight: 2 },
 ];
 
+/** Male-only: a female suspect is always clean-shaven and her sheet carries
+ *  no facial-hair line at all (dropped, not set to a value). */
 const FACIAL_HAIR: Weighted<string>[] = [
   { value: "clean-shaven", weight: 5 },
   { value: "light stubble", weight: 3 },
@@ -236,10 +265,17 @@ function pick<T>(rng: () => number, table: Weighted<T>[]): T {
 }
 
 export function rollTraits(rng: () => number): TraitSheet {
-  const bald = rng() < 0.12;
+  // Sex first — it gates hair, facial hair, and build. Shared features
+  // (eyes, nose, eyebrows, mouth, marks, complexion, expression) stay common.
+  const sex: TraitSheet["sex"] = rng() < FEMALE_SHARE ? "female" : "male";
+
+  const bald = sex === "male" && rng() < 0.12;
   const hair = bald
     ? pick(rng, BALD_OPTIONS)
-    : `${pick(rng, HAIR_COLORS)} ${pick(rng, HAIR_STYLES)}`;
+    : `${pick(rng, HAIR_COLORS)} ${pick(
+        rng,
+        sex === "male" ? HAIR_STYLES_MALE : HAIR_STYLES_FEMALE,
+      )}`;
 
   const markCount = rng() < 0.55 ? 1 : rng() < 0.2 ? 2 : 0;
   const distinguishingMarks: DistinguishingMark[] = [];
@@ -255,11 +291,12 @@ export function rollTraits(rng: () => number): TraitSheet {
   }
 
   return {
+    sex,
     age: pick(rng, AGES),
-    build: pick(rng, BUILDS),
+    build: pick(rng, sex === "male" ? BUILDS_MALE : BUILDS_FEMALE),
     faceShape: pick(rng, FACE_SHAPES),
     hair,
-    facialHair: pick(rng, FACIAL_HAIR),
+    ...(sex === "male" ? { facialHair: pick(rng, FACIAL_HAIR) } : {}),
     eyebrows: pick(rng, EYEBROWS),
     eyes: pick(rng, EYES),
     nose: pick(rng, NOSES),

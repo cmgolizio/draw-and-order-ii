@@ -34,6 +34,7 @@ const SUSPECT = {
   statement_teaser:
     "Long-faced man, mid-40s, swept-back graying hair, crooked nose.",
   traits: {
+    sex: "male",
     age: "mid-40s",
     build: "lean",
     faceShape: "long, narrow jaw",

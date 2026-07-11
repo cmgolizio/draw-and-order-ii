@@ -12,13 +12,16 @@ export const SEED_SUSPECTS = [
     statement_teaser:
       "Round-faced man, mid-30s, buzzed hair, scar through the left eyebrow.",
     traits: {
+      sex: "male",
       age: "mid-30s",
       build: "stocky",
       faceShape: "round",
       hair: "dark buzz cut",
       facialHair: "clean-shaven",
       eyebrows: "thick, straight, nearly meeting",
+      eyes: "narrow",
       nose: "flat, wide base",
+      mouth: "small and tight",
       distinguishingMarks: [{ mark: "small scar", placement: "left eyebrow" }],
       expression: "squinting",
       complexion: "ruddy",
@@ -41,13 +44,16 @@ export const SEED_SUSPECTS = [
     statement_teaser:
       "Long-faced man, maybe mid-40s, swept-back hair, crooked nose.",
     traits: {
+      sex: "male",
       age: "mid-40s",
       build: "lean",
       faceShape: "oblong",
       hair: "swept back, graying temples",
       facialHair: "mustache",
       eyebrows: "sparse, arched",
+      eyes: "deep-set",
       nose: "crooked, old break to the left",
+      mouth: "thin-lipped",
       distinguishingMarks: [],
       expression: "flat",
       complexion: "pale",
