@@ -1,10 +1,11 @@
 /**
  * Offline content pipeline (Phase 2) — fills the suspect pool end-to-end:
  *
- *   roll traits -> witness statement (Claude) -> image (adapter)
+ *   roll traits -> witness statement (Claude, rotating persona) -> image
  *   -> consistency check (Claude vision, regenerate up to 2x)
  *   -> silhouette pre-render (sharp) -> upload to private bucket
  *   -> insert row as status='review' (or 'draft' if fidelity stayed low)
+ *   -> cross-suspect variety check over the whole batch (flags, not failures)
  *
  * The live app never calls a generation API; this script is the only writer.
  *
@@ -36,9 +37,16 @@ import {
   type TraitSheet,
 } from "./pipeline/traits";
 import {
+  createPersonaRotation,
   generateStatement,
   STATEMENT_PROMPT_VERSION,
+  type WitnessPersona,
 } from "./pipeline/statement";
+import {
+  checkBatchVariety,
+  rawOpening,
+  type StatementRecord,
+} from "./pipeline/variety";
 import {
   buildImagePrompt,
   createImageGenerator,
@@ -111,11 +119,16 @@ async function main() {
   if (dryRun) mkdirSync(outDir, { recursive: true });
 
   const rng = makeRng(seed);
+  // Statement engine v2: rotate personas (seeded) and feed each statement the
+  // openings already used, so a batch can't converge on one voice or intro.
+  const nextPersona = createPersonaRotation(rng);
   console.log(
     `Generating ${count} suspect(s) — difficulty=${difficultyArg} provider=${provider} model=${claudeModel} seed=${seed}${dryRun ? " [DRY RUN]" : ""}`,
   );
 
   const batchCosts: number[] = [];
+  const batchStatements: StatementRecord[] = [];
+  const usedOpenings: string[] = [];
   let failures = 0;
 
   for (let i = 0; i < count; i++) {
@@ -129,7 +142,7 @@ async function main() {
 
     console.log(`\n[${i + 1}/${count}] rolling ${difficulty} suspect...`);
     try {
-      const cost = await generateOne({
+      const { cost, record } = await generateOne({
         anthropic,
         claudeModel,
         imageGen,
@@ -137,13 +150,32 @@ async function main() {
         outDir: dryRun ? outDir : null,
         difficulty,
         traits: rollTraits(rng),
+        persona: nextPersona(),
+        avoidOpenings: usedOpenings,
         threshold,
       });
       batchCosts.push(cost);
+      batchStatements.push(record);
+      usedOpenings.push(rawOpening(record.statement));
     } catch (err) {
       failures++;
       console.error(`[${i + 1}/${count}] FAILED:`, err);
     }
+  }
+
+  // Cross-suspect variety check (polish plan Phase 2): flag near-duplicate
+  // openings or teasers for review. Flags don't fail the batch — the review
+  // CLI is where a human acts on them.
+  const varietyFlags = checkBatchVariety(batchStatements);
+  if (varietyFlags.length > 0) {
+    console.log(`\nVARIETY CHECK — ${varietyFlags.length} flag(s) for review:`);
+    for (const flag of varietyFlags) {
+      console.log(`  [${flag.kind}] ${flag.a} vs ${flag.b}: ${flag.detail}`);
+    }
+  } else if (batchStatements.length > 1) {
+    console.log(
+      `\nVariety check: no near-duplicate openings or teasers across ${batchStatements.length} statements.`,
+    );
   }
 
   const total = batchCosts.reduce((a, b) => a + b, 0);
@@ -154,6 +186,7 @@ async function main() {
     kind: "batch",
     count: batchCosts.length,
     failures,
+    variety_flags: varietyFlags.length,
     total_usd: Math.round(total * 10_000) / 10_000,
     provider,
     model: claudeModel,
@@ -170,20 +203,27 @@ async function generateOne(ctx: {
   outDir: string | null;
   difficulty: Difficulty;
   traits: TraitSheet;
+  persona: WitnessPersona;
+  avoidOpenings: string[];
   threshold: number;
-}): Promise<number> {
+}): Promise<{ cost: number; record: StatementRecord }> {
   const id = randomUUID();
   const costs = new CostTracker();
 
-  // 1-2. Witness statement from the trait sheet.
+  // 1-2. Witness statement from the trait sheet, in this suspect's persona,
+  // steered away from openings already used in the batch.
   const statement = await generateStatement(
     ctx.anthropic,
     ctx.claudeModel,
     ctx.difficulty,
     ctx.traits,
+    ctx.persona,
     costs,
+    ctx.avoidOpenings,
   );
-  console.log(`  statement: "${statement.statement_teaser}"`);
+  console.log(
+    `  statement [${ctx.persona.label}]: "${statement.statement_teaser}"`,
+  );
 
   // 3-4. Image + consistency loop.
   const imagePrompt = buildImagePrompt(ctx.traits);
@@ -228,6 +268,7 @@ async function generateOne(ctx: {
       silhouette_version: SILHOUETTE_VERSION,
     },
     claude_model: ctx.claudeModel,
+    statement_persona: ctx.persona.id,
     image_provider: ctx.imageGen.provider,
     image_model: ctx.imageGen.model,
     image_prompt: imagePrompt,
@@ -283,7 +324,14 @@ async function generateOne(ctx: {
     fidelity: best.report.fidelity,
     ...costs.summary(),
   });
-  return costs.totalUsd;
+  return {
+    cost: costs.totalUsd,
+    record: {
+      id,
+      statement: statement.statement,
+      teaser: statement.statement_teaser,
+    },
+  };
 }
 
 async function upload(supabase: SupabaseClient, path: string, png: Buffer) {

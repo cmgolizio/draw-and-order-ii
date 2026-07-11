@@ -47,7 +47,8 @@ async function main() {
     console.log("=".repeat(72));
     console.log(
       `[${index + 1}/${pending.length}] ${suspect.id} — ${suspect.difficulty}` +
-        `  (fidelity: ${suspect.model_info?.fidelity ?? "?"})`,
+        `  (fidelity: ${suspect.model_info?.fidelity ?? "?"}` +
+        `${suspect.model_info?.statement_persona ? `, persona: ${suspect.model_info.statement_persona}` : ""})`,
     );
 
     // Save the image locally; most terminals can't render it inline, so a
