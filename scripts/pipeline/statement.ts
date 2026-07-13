@@ -225,8 +225,9 @@ const FEATURE_LABEL: Record<ChecklistFeature, string> = {
 };
 
 /** Ways a witness names the feature itself, without echoing the sheet's
- *  wording — a lenient guard against wholesale omission, not a grader. */
-const FEATURE_LABEL_PATTERNS: Record<ChecklistFeature, RegExp> = {
+ *  wording — a lenient guard against wholesale omission, not a grader.
+ *  Shared with qa.ts (the Q&A validator reuses the age pattern). */
+export const FEATURE_LABEL_PATTERNS: Record<ChecklistFeature, RegExp> = {
   eyes: /\beyes?\b/,
   eyebrows: /\b(?:eye)?brows?\b/,
   nose: /\bnose\b|\bnostrils?\b/,
@@ -262,7 +263,7 @@ function stem(token: string): string {
   return token.length > 4 ? token.replace(/(?:ing|ed|s)$/, "") : token;
 }
 
-function valueTokens(value: string): string[] {
+export function valueTokens(value: string): string[] {
   return value
     .toLowerCase()
     .split(/[^a-z0-9]+/)
@@ -270,11 +271,11 @@ function valueTokens(value: string): string[] {
     .map(stem);
 }
 
-function statementTokens(statement: string): string[] {
+export function statementTokens(statement: string): string[] {
   return comparableTokens(statement).map(stem);
 }
 
-function tokenMatches(stmtToken: string, valToken: string): boolean {
+export function tokenMatches(stmtToken: string, valToken: string): boolean {
   if (stmtToken === valToken) return true;
   // Prefix leniency only for longer tokens ("heavy" ~ "heavyset"), never for
   // short ones ("ear" must not match "early").
@@ -296,7 +297,7 @@ function featureMentioned(
   );
 }
 
-function markMentioned(mark: DistinguishingMark, tokens: string[]): boolean {
+export function markMentioned(mark: DistinguishingMark, tokens: string[]): boolean {
   // The distinctive noun is what matters ("scar", "mole", "tattoo"...);
   // exact match after stemming so "ear" never rides along inside "early".
   const nouns = mark.mark

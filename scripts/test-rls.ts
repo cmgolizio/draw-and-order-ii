@@ -3,7 +3,9 @@
  *   1. cannot read the suspects base table at all,
  *   2. sees only live suspects through suspects_public,
  *   3. can never obtain image_path (column absent from the view),
- *   4. cannot read daily_suspects or other people's rounds.
+ *   4. cannot read daily_suspects or other people's rounds,
+ *   5. (polish v2 Phase 3) CAN read qa_bank through suspects_public —
+ *      the Q&A bank is client-safe; image_path stays sealed.
  * Sanity-checks with the secret key so a broken seed can't fake a pass.
  *
  * Usage: npm run seed && npm run test:rls
@@ -11,6 +13,7 @@
 import { createClient } from "@supabase/supabase-js";
 import { loadScriptEnv, requireEnv } from "./lib/script-env";
 import { SEED_SUSPECTS } from "./lib/seed-data";
+import { QA_QUESTIONS } from "./pipeline/qa";
 
 loadScriptEnv();
 
@@ -84,6 +87,26 @@ async function main() {
     "no image_path/status leak in returned columns",
     rows.every((r) => !("image_path" in r) && !("status" in r)),
     `columns: ${rows[0] ? Object.keys(rows[0]).join(", ") : "n/a"}`,
+  );
+
+  const liveRow = rows.find((r) => r.id === LIVE_ID);
+  check(
+    "qa_bank is readable through the view (full bank on the live suspect)",
+    Array.isArray(liveRow?.qa_bank) &&
+      liveRow.qa_bank.length === QA_QUESTIONS.length &&
+      liveRow.qa_bank.every(
+        (entry: { question?: unknown; answer?: unknown }) =>
+          typeof entry.question === "string" &&
+          typeof entry.answer === "string",
+      ),
+    `qa_bank: ${JSON.stringify(liveRow?.qa_bank ?? null)?.slice(0, 80)}`,
+  );
+
+  const qaSelect = await anon.from("suspects_public").select("id, qa_bank");
+  check(
+    "selecting qa_bank explicitly succeeds",
+    qaSelect.error === null,
+    qaSelect.error?.message,
   );
 
   const imagePath = await anon.from("suspects_public").select("image_path");
