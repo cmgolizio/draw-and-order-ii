@@ -1,7 +1,8 @@
 /**
  * Offline content pipeline (Phase 2) — fills the suspect pool end-to-end:
  *
- *   roll traits -> witness statement (Claude, rotating persona) -> image
+ *   roll traits -> witness statement (Claude, rotating persona)
+ *   -> Q&A bank (Claude, same witness persona) -> image
  *   -> consistency check (Claude vision, regenerate up to 2x)
  *   -> silhouette pre-render (sharp) -> upload to private bucket
  *   -> insert row as status='review' (or 'draft' if fidelity stayed low)
@@ -47,6 +48,7 @@ import {
   rawOpening,
   type StatementRecord,
 } from "./pipeline/variety";
+import { generateQaBank, QA_PROMPT_VERSION } from "./pipeline/qa";
 import {
   buildImagePrompt,
   createImageGenerator,
@@ -225,6 +227,18 @@ async function generateOne(ctx: {
     `  statement [${ctx.persona.label}]: "${statement.statement_teaser}"`,
   );
 
+  // 2b. Q&A bank (polish plan Phase 3): the same witness answers the fixed
+  // interrogation questions, precomputed here so the live app never
+  // generates an answer.
+  const qaBank = await generateQaBank(
+    ctx.anthropic,
+    ctx.claudeModel,
+    ctx.traits,
+    ctx.persona,
+    costs,
+  );
+  console.log(`  qa bank: ${qaBank.length} answers in witness voice`);
+
   // 3-4. Image + consistency loop.
   const imagePrompt = buildImagePrompt(ctx.traits);
   let best: { image: Buffer; report: ConsistencyReport } | null = null;
@@ -263,6 +277,7 @@ async function generateOne(ctx: {
   const modelInfo = {
     pipeline: {
       statement_prompt_version: STATEMENT_PROMPT_VERSION,
+      qa_prompt_version: QA_PROMPT_VERSION,
       image_prompt_version: IMAGE_PROMPT_VERSION,
       consistency_prompt_version: CONSISTENCY_PROMPT_VERSION,
       silhouette_version: SILHOUETTE_VERSION,
@@ -289,6 +304,7 @@ async function generateOne(ctx: {
           difficulty: ctx.difficulty,
           ...statement,
           traits: ctx.traits,
+          qa_bank: qaBank,
           status,
           model_info: modelInfo,
         },
@@ -306,6 +322,7 @@ async function generateOne(ctx: {
       statement: statement.statement,
       statement_teaser: statement.statement_teaser,
       traits: ctx.traits,
+      qa_bank: qaBank,
       image_path: imagePath,
       silhouette_path: silhouettePath,
       status,
