@@ -47,6 +47,21 @@ describe("rollTraits (trait sheet v2)", () => {
       expect(() => TraitSheetSchema.parse(traits)).not.toThrow();
     }
   });
+
+  it("honors a forced sex (Phase 4 batch quota) including its gates", () => {
+    const quotaRng = makeRng(42);
+    for (let i = 0; i < 50; i++) {
+      const forced = i % 2 === 0 ? "female" : "male";
+      const traits = rollTraits(quotaRng, forced);
+      expect(traits.sex).toBe(forced);
+      if (forced === "female") {
+        expect(traits.facialHair).toBeUndefined();
+        expect(traits.hair).not.toMatch(/bald|shaved head/);
+      } else {
+        expect(traits.facialHair).toBeTruthy();
+      }
+    }
+  });
 });
 
 describe("traitSheetLines", () => {

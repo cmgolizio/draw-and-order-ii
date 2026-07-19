@@ -264,10 +264,17 @@ function pick<T>(rng: () => number, table: Weighted<T>[]): T {
   return table[table.length - 1].value;
 }
 
-export function rollTraits(rng: () => number): TraitSheet {
+export function rollTraits(
+  rng: () => number,
+  forcedSex?: TraitSheet["sex"],
+): TraitSheet {
   // Sex first — it gates hair, facial hair, and build. Shared features
   // (eyes, nose, eyebrows, mouth, marks, complexion, expression) stay common.
-  const sex: TraitSheet["sex"] = rng() < FEMALE_SHARE ? "female" : "male";
+  // The natural roll is always consumed so a seed replays the same downstream
+  // traits whether or not the batch quota (Phase 4 sex split) forces the sex.
+  const naturalSex: TraitSheet["sex"] =
+    rng() < FEMALE_SHARE ? "female" : "male";
+  const sex = forcedSex ?? naturalSex;
 
   const bald = sex === "male" && rng() < 0.12;
   const hair = bald

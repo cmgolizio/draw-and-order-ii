@@ -17,6 +17,7 @@
     "calibrate-judge": "tsx scripts/calibrate-judge.ts",
     "generate-suspects": "tsx scripts/generate-suspects.ts",
     "review-suspects": "tsx scripts/review-suspects.ts",
+    "retire-pool": "tsx scripts/retire-pool.ts",
     "assign-daily": "tsx scripts/assign-daily.ts"
   },
   "dependencies": {

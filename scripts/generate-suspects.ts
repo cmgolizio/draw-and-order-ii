@@ -18,6 +18,9 @@
  * Flags:
  *   --count N          suspects to generate (default 5)
  *   --difficulty D     rookie | detective | cold_case | mix (default mix, 2:2:1)
+ *   --sex-split S      even | random (default even: interleave sexes per
+ *                      difficulty so a batch lands a 50/50 split exactly;
+ *                      random restores the pure FEMALE_SHARE roll)
  *   --provider P       openai | fal | mock (default $IMAGE_GEN_PROVIDER or mock)
  *   --seed N           RNG seed for reproducible trait rolls (default: random)
  *   --threshold N      fidelity threshold 0-100 (default 70)
@@ -74,6 +77,7 @@ async function main() {
     options: {
       count: { type: "string", default: "5" },
       difficulty: { type: "string", default: "mix" },
+      "sex-split": { type: "string", default: "even" },
       provider: { type: "string" },
       seed: { type: "string" },
       threshold: { type: "string" },
@@ -87,6 +91,11 @@ async function main() {
   const difficultyArg = values.difficulty ?? "mix";
   if (difficultyArg !== "mix" && !DIFFICULTIES.includes(difficultyArg as Difficulty)) {
     throw new Error(`bad --difficulty: ${difficultyArg}`);
+  }
+
+  const sexSplit = values["sex-split"] ?? "even";
+  if (sexSplit !== "even" && sexSplit !== "random") {
+    throw new Error(`bad --sex-split: ${sexSplit}`);
   }
 
   const provider = (values.provider ??
@@ -131,6 +140,13 @@ async function main() {
   const batchCosts: number[] = [];
   const batchStatements: StatementRecord[] = [];
   const usedOpenings: string[] = [];
+  // Phase 4 sex split: interleave sexes per difficulty so the approved pool
+  // lands on the 50/50 target by construction instead of by binomial luck.
+  const sexTally: Record<Difficulty, { female: number; male: number }> = {
+    rookie: { female: 0, male: 0 },
+    detective: { female: 0, male: 0 },
+    cold_case: { female: 0, male: 0 },
+  };
   let failures = 0;
 
   for (let i = 0; i < count; i++) {
@@ -142,16 +158,24 @@ async function main() {
           ]
         : (difficultyArg as Difficulty);
 
+    const tally = sexTally[difficulty];
+    const forcedSex =
+      sexSplit === "even"
+        ? tally.female <= tally.male
+          ? ("female" as const)
+          : ("male" as const)
+        : undefined;
+
     console.log(`\n[${i + 1}/${count}] rolling ${difficulty} suspect...`);
     try {
-      const { cost, record } = await generateOne({
+      const { cost, record, sex } = await generateOne({
         anthropic,
         claudeModel,
         imageGen,
         supabase,
         outDir: dryRun ? outDir : null,
         difficulty,
-        traits: rollTraits(rng),
+        traits: rollTraits(rng, forcedSex),
         persona: nextPersona(),
         avoidOpenings: usedOpenings,
         threshold,
@@ -159,6 +183,7 @@ async function main() {
       batchCosts.push(cost);
       batchStatements.push(record);
       usedOpenings.push(rawOpening(record.statement));
+      tally[sex]++;
     } catch (err) {
       failures++;
       console.error(`[${i + 1}/${count}] FAILED:`, err);
@@ -184,11 +209,18 @@ async function main() {
   console.log(
     `\nBatch done: ${batchCosts.length} generated, ${failures} failed, total cost $${total.toFixed(4)}.`,
   );
+  const splitLine = DIFFICULTIES.filter(
+    (d) => sexTally[d].female + sexTally[d].male > 0,
+  )
+    .map((d) => `${d} ${sexTally[d].female}F/${sexTally[d].male}M`)
+    .join(", ");
+  if (splitLine) console.log(`Sex split (${sexSplit}): ${splitLine}`);
   logCostRecord({
     kind: "batch",
     count: batchCosts.length,
     failures,
     variety_flags: varietyFlags.length,
+    sex_split: sexTally,
     total_usd: Math.round(total * 10_000) / 10_000,
     provider,
     model: claudeModel,
@@ -208,7 +240,7 @@ async function generateOne(ctx: {
   persona: WitnessPersona;
   avoidOpenings: string[];
   threshold: number;
-}): Promise<{ cost: number; record: StatementRecord }> {
+}): Promise<{ cost: number; record: StatementRecord; sex: TraitSheet["sex"] }> {
   const id = randomUUID();
   const costs = new CostTracker();
 
@@ -337,6 +369,7 @@ async function generateOne(ctx: {
     kind: "suspect",
     id,
     difficulty: ctx.difficulty,
+    sex: ctx.traits.sex,
     status,
     fidelity: best.report.fidelity,
     ...costs.summary(),
@@ -348,6 +381,7 @@ async function generateOne(ctx: {
       statement: statement.statement,
       teaser: statement.statement_teaser,
     },
+    sex: ctx.traits.sex,
   };
 }
 
