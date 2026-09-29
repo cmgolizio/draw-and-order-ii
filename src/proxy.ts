@@ -8,6 +8,9 @@ import { NextResponse, type NextRequest } from "next/server";
  * signed out, and routes do their own auth checks.
  */
 export async function proxy(request: NextRequest) {
+  // The unranked desk does not depend on authentication or Supabase uptime.
+  const pathname = request.nextUrl.pathname;
+  if (["/", "/draw", "/daily"].includes(pathname) || pathname.startsWith("/api/play/")) return NextResponse.next({ request });
   // Keyless local dev runs without Supabase — nothing to refresh.
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;

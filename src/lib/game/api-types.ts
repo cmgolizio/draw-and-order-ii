@@ -32,7 +32,9 @@ export type ScoreBreakdownPayload = {
 export type SubmitRoundResponse = {
   roundId: string;
   score: number;
-  breakdown: ScoreBreakdownPayload;
+  breakdown: ScoreBreakdownPayload | null;
+  caseMatch?: { score: number; features: { id: string; label: string; score: number }[]; feedback: string };
+  caseContent?: { name: string; reaction: string };
   /** Short-lived signed URL; null only if signing failed after scoring. */
   suspectImageUrl: string | null;
   durationSeconds: number;

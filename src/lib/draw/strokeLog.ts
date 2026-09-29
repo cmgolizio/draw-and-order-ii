@@ -22,6 +22,7 @@ type CompressedStroke = {
   /** tool: 0 pencil, 1 eraser */
   t: 0 | 1;
   g: string;
+  c?: string;
   s: number;
   /** 1 when pressure was simulated from velocity */
   sim: 0 | 1;
@@ -43,6 +44,7 @@ function compressStroke(stroke: Stroke): CompressedStroke {
   return {
     t: stroke.tool === "eraser" ? 1 : 0,
     g: stroke.grade,
+    ...(stroke.color ? { c: stroke.color } : {}),
     s: stroke.size,
     sim: stroke.simulatePressure ? 1 : 0,
     at: Math.round(stroke.startedAt),
@@ -93,6 +95,7 @@ function isCompressedStroke(value: unknown): value is CompressedStroke {
   const s = value as Record<string, unknown>;
   return (
     (s.t === 0 || s.t === 1) &&
+    (s.c === undefined || (typeof s.c === "string" && /^#[0-9a-f]{6}$/i.test(s.c))) &&
     typeof s.g === "string" &&
     (PENCIL_GRADES as readonly string[]).includes(s.g) &&
     typeof s.s === "number" &&
@@ -124,6 +127,7 @@ export function decompressStrokeLog(log: StrokeLog): Stroke[] {
       id: index + 1,
       tool: s.t === 1 ? "eraser" : "pencil",
       grade: s.g as PencilGrade,
+      color: s.c,
       size: s.s,
       simulatePressure: s.sim === 1,
       startedAt: s.at,
