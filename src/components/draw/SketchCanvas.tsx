@@ -46,6 +46,8 @@ export type SketchCanvasHandle = {
 
 type Props = {
   strokes: Stroke[];
+  color?: string;
+  disabled?: boolean;
   tool: Tool;
   grade: PencilGrade;
   pencilSize: number;
@@ -70,7 +72,7 @@ const CommittedStroke = memo(function CommittedStroke({
   return (
     <Path
       data={data}
-      fill={INK_COLOR}
+      fill={stroke.color ?? INK_COLOR}
       opacity={stroke.tool === "eraser" ? 1 : GRADE_VALUE[stroke.grade]}
       globalCompositeOperation={
         stroke.tool === "eraser" ? "destination-out" : "source-over"
@@ -85,6 +87,8 @@ export const SketchCanvas = forwardRef<SketchCanvasHandle, Props>(
   function SketchCanvas(props, ref) {
     const {
       strokes,
+      color,
+      disabled = false,
       tool,
       grade,
       pencilSize,
@@ -173,6 +177,7 @@ export const SketchCanvas = forwardRef<SketchCanvasHandle, Props>(
 
     const handlePointerDown = useCallback(
       (e: React.PointerEvent) => {
+        if (disabled) return;
         if (e.pointerType === "mouse" && e.button !== 0) return;
 
         if (e.pointerType === "pen") activePens.current.add(e.pointerId);
@@ -208,6 +213,7 @@ export const SketchCanvas = forwardRef<SketchCanvasHandle, Props>(
         strokeStartedAt.current = performance.now();
         currentStroke.current = {
           id: nextStrokeId,
+          color,
           tool,
           grade,
           size: tool === "eraser" ? eraserSize : pencilSize,
@@ -220,6 +226,8 @@ export const SketchCanvas = forwardRef<SketchCanvasHandle, Props>(
       },
       [
         tool,
+        color,
+        disabled,
         grade,
         pencilSize,
         eraserSize,
@@ -373,7 +381,7 @@ export const SketchCanvas = forwardRef<SketchCanvasHandle, Props>(
               {current && currentData && (
                 <Path
                   data={currentData}
-                  fill={INK_COLOR}
+                  fill={current.color ?? INK_COLOR}
                   opacity={
                     current.tool === "eraser" ? 1 : GRADE_VALUE[current.grade]
                   }

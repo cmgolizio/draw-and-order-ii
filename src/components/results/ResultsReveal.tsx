@@ -70,7 +70,7 @@ export function ResultsReveal({ result }: { result: RoundResult }) {
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <TypewriterHeading as="h1" className="text-2xl sm:text-3xl">
-            Forensic report
+            Your case, closed
           </TypewriterHeading>
           <p className="type-label mt-1 text-xs text-ink-faint">
             Case {number} · filed by {result.handle}
@@ -78,14 +78,16 @@ export function ResultsReveal({ result }: { result: RoundResult }) {
         </div>
         <div
           className="anim-stamp"
-          style={{ "--reveal-delay": `${DELAY.stamp}ms` } as React.CSSProperties}
+          style={
+            { "--reveal-delay": `${DELAY.stamp}ms` } as React.CSSProperties
+          }
           onAnimationEnd={(e) => {
             if (e.currentTarget === e.target) playStampThud();
           }}
         >
           {result.forfeited ? (
             <Stamp color="blue" className="text-xl">
-              Forfeited
+              Unscored
             </Stamp>
           ) : (
             <Stamp color="red" className="text-2xl" seed={result.roundId}>
@@ -152,11 +154,36 @@ export function ResultsReveal({ result }: { result: RoundResult }) {
         </PinnedEvidence>
       </div>
 
+      {result.caseMatch && (
+        <section aria-label="AI likeness feedback">
+          <p>{result.caseMatch.feedback}</p>
+          <details>
+            <summary>Feature match · AI estimate</summary>
+            <ul>
+              {result.caseMatch.features.map((f) => (
+                <li key={f.id}>
+                  {f.label}: {f.score}/100
+                </li>
+              ))}
+            </ul>
+          </details>
+        </section>
+      )}
+      <p className="text-sm text-ink-soft">
+        {result.score !== null
+          ? "AI likeness estimate — not a measure of artistic skill."
+          : "Revealed without AI judging."}
+      </p>
+      <InkButton variant="red" href="/draw">
+        Next odd case
+      </InkButton>
       {/* The judge's case report, typed up */}
       {result.breakdown && (
         <blockquote
           className="texture-grain anim-fade font-typewriter border border-graphite-200 bg-paper p-4 text-sm leading-relaxed text-ink-soft shadow-folder"
-          style={{ "--reveal-delay": `${DELAY.report}ms` } as React.CSSProperties}
+          style={
+            { "--reveal-delay": `${DELAY.report}ms` } as React.CSSProperties
+          }
         >
           “{result.breakdown.caseReport}”
         </blockquote>
@@ -164,8 +191,8 @@ export function ResultsReveal({ result }: { result: RoundResult }) {
 
       {result.forfeited && (
         <p className="max-w-prose text-sm text-ink-soft">
-          You turned yourself in — no score on a forfeited case, and it stays
-          off the leaderboard. The face is above; study it for next time.
+          You revealed without a score. This round stays off the leaderboard.
+          The face is above; study it for next time.
         </p>
       )}
 
@@ -229,8 +256,8 @@ export function ResultsReveal({ result }: { result: RoundResult }) {
             })}
           </ul>
           <p className="mt-3 text-[11px] text-ink-faint">
-            Weighted for likeness: marks ×{TRAIT_WEIGHTS.distinctiveMarks},
-            hair ×{TRAIT_WEIGHTS.hairStyle}
+            Weighted for likeness: marks ×{TRAIT_WEIGHTS.distinctiveMarks}, hair
+            ×{TRAIT_WEIGHTS.hairStyle}
             {result.breakdown.usedGuide && " · silhouette guide used: ×0.95"} ·
             difficulty ×{result.breakdown.multipliers.difficulty}
           </p>
@@ -238,7 +265,12 @@ export function ResultsReveal({ result }: { result: RoundResult }) {
       )}
 
       {/* The statement this sketch was drawn from */}
-      <details className="anim-fade" style={{ "--reveal-delay": `${DELAY.checklist}ms` } as React.CSSProperties}>
+      <details
+        className="anim-fade"
+        style={
+          { "--reveal-delay": `${DELAY.checklist}ms` } as React.CSSProperties
+        }
+      >
         <summary className="type-label cursor-pointer text-xs text-ink-soft">
           The witness statement
         </summary>

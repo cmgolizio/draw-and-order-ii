@@ -20,6 +20,7 @@ export type RoundResult = {
   forfeited: boolean;
   score: number | null;
   breakdown: ScoreBreakdownPayload | null;
+  caseMatch?: { score: number; features: { id: string; label: string; score: number }[]; feedback: string } | null;
   /** Short-lived signed URLs, minted per page render. */
   suspectImageUrl: string | null;
   drawingUrl: string | null;

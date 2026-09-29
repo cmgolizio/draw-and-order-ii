@@ -10,7 +10,7 @@ import {
   resolveIdentity,
 } from "@/lib/server/identity";
 import { hitLimit, LIMITS } from "@/lib/server/rate-limit";
-import { verifyTurnstile } from "@/lib/server/turnstile";
+import { CaseSchema, publicBrief } from "@/lib/play/schema";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 /**
@@ -29,7 +29,7 @@ const BodySchema = z.object({
 });
 
 const SUSPECT_BRIEF_COLUMNS =
-  "id, difficulty, statement, statement_teaser, silhouette_path";
+  "id, difficulty, statement, statement_teaser, silhouette_path, traits";
 
 type SuspectBrief = {
   id: string;
@@ -37,6 +37,7 @@ type SuspectBrief = {
   statement: string;
   statement_teaser: string;
   silhouette_path: string | null;
+  traits?: unknown;
 };
 
 export const POST = withRouteErrors("rounds.create", createRound);
@@ -52,7 +53,7 @@ async function createRound(request: NextRequest) {
   if (!parsed.success) {
     return apiError(400, "bad_request", "Malformed request body.");
   }
-  const { mode, difficulty, anonId, turnstileToken } = parsed.data;
+  const { mode, difficulty, anonId } = parsed.data;
 
   const identity = await resolveIdentity(anonId);
   if (!identity) {
@@ -78,11 +79,6 @@ async function createRound(request: NextRequest) {
     );
   }
 
-  const turnstile = await verifyTurnstile(turnstileToken, ip);
-  if (!turnstile.ok) {
-    return apiError(403, "turnstile_failed", turnstile.message);
-  }
-
   // --- pick the suspect ----------------------------------------------------
   const today = utcToday();
   let suspect: SuspectBrief;
@@ -94,7 +90,11 @@ async function createRound(request: NextRequest) {
       .eq("date", today)
       .maybeSingle();
     if (dailyError) {
-      return apiError(500, "server_error", "Records room is jammed. Try again.");
+      return apiError(
+        500,
+        "server_error",
+        "Records room is jammed. Try again.",
+      );
     }
     if (!daily) {
       return apiError(
@@ -125,7 +125,11 @@ async function createRound(request: NextRequest) {
     if (difficulty) query = query.eq("difficulty", difficulty);
     const { data: pool, error } = await query;
     if (error) {
-      return apiError(500, "server_error", "Records room is jammed. Try again.");
+      return apiError(
+        500,
+        "server_error",
+        "Records room is jammed. Try again.",
+      );
     }
     if (!pool || pool.length === 0) {
       return apiError(
@@ -178,21 +182,18 @@ async function createRound(request: NextRequest) {
         );
       }
     } else {
-      return apiError(500, "server_error", "Couldn't open the case file. Try again.");
+      return apiError(
+        500,
+        "server_error",
+        "Couldn't open the case file. Try again.",
+      );
     }
   } else {
     roundId = created.id;
   }
 
-  // --- silhouette guide (safe to serve; the real image never leaves) --------
-  let silhouetteUrl: string | null = null;
-  if (suspect.silhouette_path) {
-    const { data: signed } = await admin.storage
-      .from("suspect-images")
-      .createSignedUrl(suspect.silhouette_path, 60 * 60);
-    silhouetteUrl = signed?.signedUrl ?? null;
-  }
-
+  // References and derived silhouettes stay sealed until reveal.
+  const content = CaseSchema.safeParse(suspect.traits);
   logEvent("round_created", {
     roundId,
     mode,
@@ -207,7 +208,8 @@ async function createRound(request: NextRequest) {
     difficulty: suspect.difficulty,
     statement: suspect.statement,
     statementTeaser: suspect.statement_teaser,
-    silhouetteUrl,
+    silhouetteUrl: null,
+    ...(content.success ? { caseContent: publicBrief(content.data) } : {}),
   };
   return Response.json(response);
 }

@@ -1,3 +1,6 @@
+import { readPngDimensions } from "@/lib/server/png";
+import { parseStrokeLog, STROKE_LOG_MAX_BYTES } from "@/lib/draw/strokeLog";
+import sharp from "sharp";
 import type { NextRequest } from "next/server";
 import { z } from "zod";
 import type { RevealRoundResponse } from "@/lib/game/api-types";
@@ -40,8 +43,25 @@ async function revealRound(
   }
 
   let json: unknown = {};
+  let drawing: File | null = null;
+  let strokeData: unknown = null;
   try {
-    json = await request.json();
+    if (request.headers.get("content-type")?.includes("multipart/form-data")) {
+      const form = await request.formData();
+      json = { anonId: form.get("anonId") || undefined };
+      const file = form.get("drawing");
+      drawing = file instanceof File ? file : null;
+      const raw = form.get("strokeLog");
+      if (typeof raw === "string" && raw.length <= STROKE_LOG_MAX_BYTES) {
+        try {
+          strokeData = parseStrokeLog(JSON.parse(raw));
+        } catch {
+          /* optional replay */
+        }
+      }
+    } else {
+      json = await request.json();
+    }
   } catch {
     // Empty body is fine — authed players don't need to send anything.
   }
@@ -77,7 +97,58 @@ async function revealRound(
     return apiError(404, "case_file_missing", "No such case file.");
   }
   if (!ownsRound(identity, round)) {
-    return apiError(403, "not_your_case", "That's not your case file, detective.");
+    return apiError(
+      403,
+      "not_your_case",
+      "That's not your case file, detective.",
+    );
+  }
+
+  if (!round.revealed && drawing) {
+    if (drawing.size > 2 * 1024 * 1024)
+      return apiError(
+        413,
+        "drawing_too_large",
+        "Sketch exceeds the 2MB limit.",
+      );
+    let bytes = Buffer.from(await drawing.arrayBuffer());
+    const dims = readPngDimensions(bytes);
+    if (!dims || dims.width !== 800 || dims.height !== 1040)
+      return apiError(
+        400,
+        "drawing_bad_dimensions",
+        "Expected an 800 × 1040 PNG.",
+      );
+    try {
+      bytes = await sharp(bytes, { limitInputPixels: 800 * 1040 })
+        .png()
+        .toBuffer();
+    } catch {
+      return apiError(400, "drawing_not_png", "The sketch could not be read.");
+    }
+    const drawingPath =
+      identity.kind === "user"
+        ? `${identity.id}/${roundId}.png`
+        : `anon/${identity.id}/${roundId}.png`;
+    const { error: uploadError } = await admin.storage
+      .from("drawings")
+      .upload(drawingPath, bytes, { contentType: "image/png", upsert: true });
+    if (uploadError)
+      return apiError(
+        500,
+        "server_error",
+        "Could not save the sketch. Your drawing is still in this tab.",
+      );
+    const { error: saveError } = await admin
+      .from("rounds")
+      .update({ drawing_path: drawingPath, stroke_data: strokeData })
+      .eq("id", roundId);
+    if (saveError)
+      return apiError(
+        500,
+        "server_error",
+        "Could not save the sketch record. Try again.",
+      );
   }
 
   if (!round.revealed) {
@@ -86,7 +157,11 @@ async function revealRound(
       .update({ revealed: true, score_breakdown: { forfeited: true } })
       .eq("id", roundId);
     if (error) {
-      return apiError(500, "server_error", "Couldn't close the case. Try again.");
+      return apiError(
+        500,
+        "server_error",
+        "Couldn't close the case. Try again.",
+      );
     }
   }
 
@@ -96,7 +171,11 @@ async function revealRound(
     .eq("id", round.suspect_id)
     .maybeSingle();
   if (!suspect?.image_path) {
-    return apiError(500, "case_file_corrupt", "The case file is damaged. This one's on us.");
+    return apiError(
+      500,
+      "case_file_corrupt",
+      "The case file is damaged. This one's on us.",
+    );
   }
   const { data: signed } = await admin.storage
     .from("suspect-images")

@@ -2,6 +2,7 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   reactCompiler: true,
+  outputFileTracingIncludes: { '/api/play/reveal': ['./content/cases/*.png'] },
   // Pin the workspace root to this project. Next 16 / Turbopack otherwise
   // infers the root from the nearest lockfile it can find walking upward, so a
   // stray package-lock.json in a parent directory (e.g. the user's home folder)
