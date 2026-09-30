@@ -1,3 +1,7 @@
+import sharp from "sharp";
+import { CaseSchema } from "@/lib/play/schema";
+import { runCaseJudge, CASE_JUDGE_VERSION } from "@/lib/play/judge";
+import { verifyTurnstile } from "@/lib/server/turnstile";
 import Anthropic from "@anthropic-ai/sdk";
 import type { NextRequest } from "next/server";
 import { z } from "zod";
@@ -27,7 +31,7 @@ import { hitJudgeBudget, hitLimit, LIMITS } from "@/lib/server/rate-limit";
 import { readPngDimensions } from "@/lib/server/png";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { CANVAS_HEIGHT, CANVAS_WIDTH } from "@/lib/draw/types";
-import { STROKE_LOG_MAX_BYTES } from "@/lib/draw/strokeLog";
+import { parseStrokeLog, STROKE_LOG_MAX_BYTES } from "@/lib/draw/strokeLog";
 
 /**
  * POST /api/rounds/[id]/submit — round lifecycle step 2 (Phase 4).
@@ -41,12 +45,15 @@ import { STROKE_LOG_MAX_BYTES } from "@/lib/draw/strokeLog";
  * gets an honest error and a retry. A fake score is never returned.
  */
 
+export const maxDuration = 60;
+
 const MAX_DRAWING_BYTES = 2 * 1024 * 1024;
 const REVEAL_URL_TTL_SECONDS = 600;
 
 const FieldsSchema = z.object({
   anonId: z.uuid().optional(),
   usedGuide: z.enum(["true", "false"]).optional(),
+  turnstileToken: z.string().min(1).max(2048).optional(),
 });
 
 export const POST = withRouteErrors("rounds.submit", submitRound);
@@ -69,6 +76,7 @@ async function submitRound(
   const fields = FieldsSchema.safeParse({
     anonId: stringField(form, "anonId"),
     usedGuide: stringField(form, "usedGuide"),
+    turnstileToken: stringField(form, "turnstileToken"),
   });
   if (!fields.success) {
     return apiError(400, "bad_request", "Malformed submission fields.");
@@ -96,7 +104,11 @@ async function submitRound(
     return apiError(404, "case_file_missing", "No such case file.");
   }
   if (!ownsRound(identity, round)) {
-    return apiError(403, "not_your_case", "That's not your case file, detective.");
+    return apiError(
+      403,
+      "not_your_case",
+      "That's not your case file, detective.",
+    );
   }
   if (round.final_score !== null || round.revealed) {
     return apiError(
@@ -114,7 +126,7 @@ async function submitRound(
   if (file.size > MAX_DRAWING_BYTES) {
     return apiError(413, "drawing_too_large", "Sketch exceeds the 2MB limit.");
   }
-  const drawingBytes = new Uint8Array(await file.arrayBuffer());
+  let drawingBytes = new Uint8Array(await file.arrayBuffer());
   const dims = readPngDimensions(drawingBytes);
   if (!dims) {
     return apiError(415, "drawing_not_png", "Sketches must be PNG.");
@@ -127,6 +139,22 @@ async function submitRound(
     );
   }
 
+  try {
+    drawingBytes = new Uint8Array(
+      await sharp(drawingBytes, {
+        limitInputPixels: CANVAS_WIDTH * CANVAS_HEIGHT,
+      })
+        .png()
+        .toBuffer(),
+    );
+  } catch {
+    return apiError(
+      400,
+      "drawing_not_png",
+      "The PNG could not be decoded. Your sketch has not been judged.",
+    );
+  }
+
   // Optional stroke log — replay data, dropped silently when oversized/broken.
   let strokeData: unknown = null;
   const strokeLogRaw = form.get("strokeLog");
@@ -136,7 +164,7 @@ async function submitRound(
     strokeLogRaw.length <= STROKE_LOG_MAX_BYTES
   ) {
     try {
-      strokeData = JSON.parse(strokeLogRaw);
+      strokeData = parseStrokeLog(JSON.parse(strokeLogRaw));
     } catch {
       strokeData = null;
     }
@@ -174,17 +202,30 @@ async function submitRound(
     .eq("id", round.suspect_id)
     .maybeSingle();
   if (suspectError || !suspect?.image_path) {
-    return apiError(500, "case_file_corrupt", "The case file is damaged. This one's on us.");
+    return apiError(
+      500,
+      "case_file_corrupt",
+      "The case file is damaged. This one's on us.",
+    );
   }
   const traits = TraitSheetSchema.safeParse(suspect.traits);
-  if (!traits.success) {
-    return apiError(500, "case_file_corrupt", "The case file is damaged. This one's on us.");
+  const caseContent = CaseSchema.safeParse(suspect.traits);
+  if (!traits.success && !caseContent.success) {
+    return apiError(
+      500,
+      "case_file_corrupt",
+      "The case file is damaged. This one's on us.",
+    );
   }
   const { data: suspectBlob, error: downloadError } = await admin.storage
     .from("suspect-images")
     .download(suspect.image_path);
   if (downloadError || !suspectBlob) {
-    return apiError(500, "case_file_corrupt", "The case file is damaged. This one's on us.");
+    return apiError(
+      500,
+      "case_file_corrupt",
+      "The case file is damaged. This one's on us.",
+    );
   }
   const suspectBytes = new Uint8Array(await suspectBlob.arrayBuffer());
 
@@ -201,12 +242,34 @@ async function submitRound(
       upsert: true,
     });
   if (uploadError) {
-    return apiError(500, "server_error", "Couldn't file the sketch. Try again.");
+    return apiError(
+      500,
+      "server_error",
+      "Couldn't file the sketch. Try again.",
+    );
   }
-  await admin
+  const { error: drawingSaveError } = await admin
     .from("rounds")
     .update({ drawing_path: drawingPath, stroke_data: strokeData })
     .eq("id", roundId);
+  if (drawingSaveError)
+    return apiError(
+      500,
+      "server_error",
+      "Could not save the sketch record. Try again.",
+    );
+
+  // Verification belongs at the costly action, after the drawing is preserved.
+  const verification = await verifyTurnstile(fields.data.turnstileToken, ip);
+  if (!verification.ok)
+    return apiError(403, "turnstile_failed", verification.message);
+  if (caseContent.success && process.env.CASE_JUDGE_CALIBRATED !== "true") {
+    return apiError(
+      503,
+      "judge_not_calibrated",
+      "Likeness scoring for this new case is not ready. Reveal without a score, or keep your sketch and retry later.",
+    );
+  }
 
   // --- per-day global spend circuit breaker ---------------------------------
   if (!(await hitJudgeBudget(admin))) {
@@ -220,13 +283,32 @@ async function submitRound(
   // --- the judge: one Claude vision call, honest failure ---------------------
   const model = judgeModel(DEFAULT_JUDGE_MODEL);
   let judged: JudgeResult;
+  let caseMatch: {
+    score: number;
+    features: { id: string; label: string; score: number }[];
+    feedback: string;
+  } | null = null;
   try {
-    const anthropic = new Anthropic({ apiKey: serverEnv("ANTHROPIC_API_KEY") });
-    judged = await runJudge(anthropic, model, {
-      traits: traits.data,
-      suspectPng: suspectBytes,
-      drawingPng: drawingBytes,
+    const anthropic = new Anthropic({
+      apiKey: serverEnv("ANTHROPIC_API_KEY"),
+      maxRetries: 0,
+      timeout: 45000,
     });
+    if (caseContent.success) {
+      const outcome = await runCaseJudge(anthropic, model, {
+        caseContent: caseContent.data,
+        suspectPng: suspectBytes,
+        drawingPng: drawingBytes,
+      });
+      caseMatch = outcome.match;
+      judged = { usage: outcome.usage } as JudgeResult;
+    } else {
+      judged = await runJudge(anthropic, model, {
+        traits: traits.data!,
+        suspectPng: suspectBytes,
+        drawingPng: drawingBytes,
+      });
+    }
   } catch (error) {
     logError("judge_failed", { roundId, model, error: errorString(error) });
     return apiError(
@@ -247,25 +329,29 @@ async function submitRound(
 
   // --- final score is computed HERE, from tunable weights -------------------
   const usedGuide = fields.data.usedGuide === "true";
-  const computed = computeFinalScore(
-    judged.verdict.traits,
-    suspect.difficulty,
-    usedGuide,
-  );
+  const computed = caseMatch
+    ? {
+        finalScore: caseMatch.score,
+        weightedBase: caseMatch.score,
+        multipliers: { difficulty: 1, guide: 1 },
+      }
+    : computeFinalScore(judged.verdict.traits, suspect.difficulty, usedGuide);
   const durationSeconds = Math.max(
     0,
     Math.round((Date.now() - new Date(round.created_at).getTime()) / 1000),
   );
 
-  const breakdown: ScoreBreakdownPayload = {
-    traits: judged.verdict.traits,
-    caseReport: judged.verdict.caseReport,
-    bestFeature: judged.verdict.bestFeature,
-    biggestMiss: judged.verdict.biggestMiss,
-    usedGuide,
-    weightedBase: computed.weightedBase,
-    multipliers: computed.multipliers,
-  };
+  const breakdown: ScoreBreakdownPayload | null = caseMatch
+    ? null
+    : {
+        traits: judged.verdict.traits,
+        caseReport: judged.verdict.caseReport,
+        bestFeature: judged.verdict.bestFeature,
+        biggestMiss: judged.verdict.biggestMiss,
+        usedGuide,
+        weightedBase: computed.weightedBase,
+        multipliers: computed.multipliers,
+      };
 
   const { error: scoreError } = await admin
     .from("rounds")
@@ -273,11 +359,12 @@ async function submitRound(
       final_score: computed.finalScore,
       score_breakdown: {
         ...breakdown,
+        ...(caseMatch ? { version: 2, caseMatch } : {}),
         used_guide: usedGuide, // schema-documented key, kept alongside
-        scoring_version: SCORING_VERSION,
+        scoring_version: caseMatch ? CASE_JUDGE_VERSION : SCORING_VERSION,
         judge: {
           model,
-          prompt_version: JUDGE_PROMPT_VERSION,
+          prompt_version: caseMatch ? CASE_JUDGE_VERSION : JUDGE_PROMPT_VERSION,
           input_tokens: judged.usage.input_tokens,
           output_tokens: judged.usage.output_tokens,
           estimated_cost_usd: judgeCostUsd,
@@ -288,7 +375,11 @@ async function submitRound(
     })
     .eq("id", roundId);
   if (scoreError) {
-    return apiError(500, "server_error", "Couldn't file the report. Try again.");
+    return apiError(
+      500,
+      "server_error",
+      "Couldn't file the report. Try again.",
+    );
   }
   logEvent("round_scored", {
     roundId,
@@ -308,6 +399,17 @@ async function submitRound(
     roundId,
     score: computed.finalScore,
     breakdown,
+    ...(caseMatch
+      ? {
+          caseMatch,
+          caseContent: caseContent.success
+            ? {
+                name: caseContent.data.name,
+                reaction: caseContent.data.reaction,
+              }
+            : undefined,
+        }
+      : {}),
     suspectImageUrl: signed?.signedUrl ?? null,
     durationSeconds,
   };

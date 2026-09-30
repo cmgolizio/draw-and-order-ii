@@ -38,6 +38,8 @@ export const DEFAULT_ERASER_SIZE = 24;
 
 export type Stroke = {
   id: number;
+  /** Optional for backwards-compatible grayscale logs. */
+  color?: string;
   tool: Tool;
   grade: PencilGrade;
   size: number;

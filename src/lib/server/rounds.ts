@@ -105,6 +105,22 @@ export const getRoundResult = cache(
       forfeited,
       score: round.final_score === null ? null : Number(round.final_score),
       breakdown: forfeited ? null : parseBreakdown(round.score_breakdown),
+      caseMatch: (() => {
+        const parsed = z
+          .object({
+            score: z.number().min(0).max(100),
+            features: z.array(
+              z.object({
+                id: z.string(),
+                label: z.string(),
+                score: z.number().min(0).max(100),
+              }),
+            ),
+            feedback: z.string(),
+          })
+          .safeParse(round.score_breakdown?.caseMatch);
+        return parsed.success ? parsed.data : null;
+      })(),
       suspectImageUrl: suspectSigned?.data?.signedUrl ?? null,
       drawingUrl: drawingSigned?.data?.signedUrl ?? null,
       strokeLog: parseStrokeLog(round.stroke_data),
@@ -149,11 +165,7 @@ export async function downloadRoundImages(roundId: string): Promise<{
   ]);
 
   return {
-    suspectPng: suspectBlob?.data
-      ? await suspectBlob.data.arrayBuffer()
-      : null,
-    drawingPng: drawingBlob?.data
-      ? await drawingBlob.data.arrayBuffer()
-      : null,
+    suspectPng: suspectBlob?.data ? await suspectBlob.data.arrayBuffer() : null,
+    drawingPng: drawingBlob?.data ? await drawingBlob.data.arrayBuffer() : null,
   };
 }

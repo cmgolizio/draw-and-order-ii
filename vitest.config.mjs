@@ -6,6 +6,7 @@ export default defineConfig({
     // Resolve the app's `@/*` alias straight from tsconfig.
     tsconfigPaths: true,
     alias: {
+      "@": fileURLToPath(new URL("./src", import.meta.url)),
       // The real package throws outside a React Server environment; unit
       // tests exercise server modules directly, so stub it out.
       "server-only": fileURLToPath(
@@ -15,6 +16,6 @@ export default defineConfig({
   },
   test: {
     environment: "node",
-    include: ["tests/unit/**/*.test.ts"],
+    include: ["tests/unit/**/*.test.{ts,js}"],
   },
 });

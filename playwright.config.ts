@@ -13,6 +13,8 @@ const APP_ORIGIN = `http://127.0.0.1:${APP_PORT}`;
 
 export default defineConfig({
   testDir: "./e2e",
+  testMatch: "smoke.spec.ts",
+  outputDir: "test-results/smoke",
   // The specs share one mock backend and one dev server; keep them serial.
   workers: 1,
   fullyParallel: false,
@@ -38,7 +40,7 @@ export default defineConfig({
     },
     {
       // Prod build: dev-mode hydration timing is not what we're smoking out.
-      command: `npx next build && npx next start -p ${APP_PORT}`,
+      command: `npx next build && npx next start -p ${APP_PORT} --hostname 127.0.0.1`,
       url: APP_ORIGIN,
       reuseExistingServer: !process.env.CI,
       timeout: 300_000,

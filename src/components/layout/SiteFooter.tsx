@@ -7,7 +7,7 @@ export function SiteFooter() {
         <p className="type-label">Case files · Precinct of the Armchair</p>
         <p className="flex flex-wrap items-center gap-x-3 gap-y-1">
           <span>
-            Every suspect is a fictional face. For entertainment purposes only.
+            Every suspect is fictional. For entertainment purposes only.
           </span>
           <ConsentNoticeLink className="type-label cursor-pointer underline underline-offset-2 hover:text-ink" />
         </p>
