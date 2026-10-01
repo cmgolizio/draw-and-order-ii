@@ -68,7 +68,7 @@ function paintStroke(
   ctx.globalCompositeOperation =
     stroke.tool === "eraser" ? "destination-out" : "source-over";
   ctx.globalAlpha = stroke.tool === "eraser" ? 1 : GRADE_VALUE[stroke.grade];
-  ctx.fillStyle = INK_COLOR;
+  ctx.fillStyle = stroke.color ?? INK_COLOR;
   ctx.fill(new Path2D(data));
 }
 

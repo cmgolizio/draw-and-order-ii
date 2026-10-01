@@ -1,0 +1,20 @@
+{
+  "moth": {
+    "status": "reviewed",
+    "reviewedAt": "2026-09-28",
+    "method": "Visual comparison of generated atlas, cropped art, canonical features and three authored clues",
+    "sha256": "33aa64c086b1f26f5e52ff17ee626b996c68d59dd5ee1d6d165e6ab761de1310"
+  },
+  "maven": {
+    "status": "reviewed",
+    "reviewedAt": "2026-09-28",
+    "method": "Visual comparison of generated atlas, cropped art, canonical features and three authored clues",
+    "sha256": "037e140088efc68618d9f946d6e46107f7c15750379645d269adf29ef790abcb"
+  },
+  "teapot": {
+    "status": "reviewed",
+    "reviewedAt": "2026-09-28",
+    "method": "Visual comparison of generated atlas, cropped art, canonical features and three authored clues",
+    "sha256": "c55883d93f08a8d48a5d53b93f01066ff46b729b941530d4816373a220250b0f"
+  }
+}

@@ -7,6 +7,7 @@ import { SiteHeader } from "@/components/layout/SiteHeader";
 import { SiteFooter } from "@/components/layout/SiteFooter";
 import { siteUrl } from "@/lib/site-url";
 import "./globals.css";
+import "@/components/play/play.css";
 
 const grotesk = Geist({
   variable: "--font-grotesk",
@@ -31,7 +32,7 @@ export const metadata: Metadata = {
     template: "%s · Draw & Order",
   },
   description:
-    "The AI police-sketch game. Read the witness statement, sketch the suspect, get judged by the forensic AI.",
+    "Hear the witnesses, sketch the suspect, and open the case file. A fictional sketch-artist game.",
   openGraph: {
     siteName: "Draw & Order",
     type: "website",
